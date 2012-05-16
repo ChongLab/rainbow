@@ -14,6 +14,13 @@ the PATH environment that leads to this directory.
 
 Usage of Rainbow package
 ========================
+EXAMPLE: a typical use of Rainbow step by step
+
+	rainbow cluster -1 1.fq  -2 2.fq > rbcluster.out 2> log
+	rainbow div -i rbcluster.out > rbdiv.out
+	rbasm -i rbdiv.out -o rbasm.out
+	rainbow merge -a rbasm.out -v rbdiv.out -p 0.002 > merged.txt ## [-p] is the estimated heterogosity
+	rerun_rbasm.pl merged.txt rbdiv.out rbasm.out # the output file 'final_asm.fa' contains the final contigs
 
 ----------------------------------------------------------------------------------
 rainbow 1.1 -- <ruanjue@gmail.com, chongzechen@gmail.com>

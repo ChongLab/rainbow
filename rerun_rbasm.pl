@@ -38,19 +38,21 @@ close OUT;
 my $len = 0;
 my $name = "";
 my $seq = "";
+my $pre = "";
 open OUT, ">final_asm.fa" or die $!;
 open IN, $asm or die $!;
 my @e = ();
 while (<IN>) {
 	if (/^E/) {
 		@e = split /\s+/, $_;
-		if ($len && !$mhash{$e[1]}) {
+		if ($len && !$mhash{$pre}) {
 			print OUT ">$name"."_L"."$len\n";
 			print OUT $seq, "\n";
 		}
 		$name = $e[0].$e[1];
 		$len = 0;
 		$seq = "";
+		$pre = $e[1];
 	} elsif (/^S/) {
 		@e = split /\s+/, $_;
 		if ($len < length $e[1]) {
@@ -60,14 +62,14 @@ while (<IN>) {
 	}
 }
 close IN;
-if ($len && !$mhash{$e[1]}) {
+if ($len && !$mhash{$pre}) {
 	print OUT ">$name"."_L"."$len\n";
 	print OUT $seq, "\n";
 }
 close OUT;
 
-`rbasm -i tmp_to_reasm.rbout |  select_best_rbcontig.pl - | sed 's/^>E/>R/' >> final_asm.fa`;
-`rm tmp_to_reasm.rbout`;
+`sort -k2,2n tmp_to_reasm.rbout| tee tmp_to_reasm.rbout.srt |rbasm -i - |  select_best_rbcontig.pl - | sed 's/^>E/>R/' >> final_asm.fa`;
+`rm tmp_to_reasm.rbout*`;
 
 1;
 
