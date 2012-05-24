@@ -96,6 +96,8 @@ typedef struct {
 	rilist *rds;
 	u8list *seqs;
 	u32slist *grps, *cache;
+	u64list *markers;
+	u32list *deps;
 	u32list *gids;
 	uint32_t n_col;
 	uint32_t k_allele, K_allele;

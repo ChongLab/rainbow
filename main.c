@@ -46,7 +46,7 @@ int usage(){
 	"  -p <float>  maximum heterozygosity to collapse, should be specifed according to the estimated\n"
 	"              polymorphism of the species [0.01]\n"
 	"  -l <int>    Minimum overlap to collapse two contigs [100]\n"
-	"  -n <int>    Maximum number of contigs to execute pairwise alignment [50]\n"
+//	"  -n <int>    Maximum number of contigs to execute pairwise alignment [50]\n"
 	"\n",
 	version
 	);

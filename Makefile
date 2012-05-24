@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS= -W -Wall -O2 -finline-functions -D_FILE_OFFSET_BITS=64
+CFLAGS= -W -O2 -Wall -finline-functions -D_FILE_OFFSET_BITS=64
 GLIBS=-lm
 GENERIC_SRC= string.h bitvec.h file_reader.h hashset.h sort.h list.h dna.h heap.h stdaln.h
 
