@@ -170,6 +170,21 @@ int div_invoker(int argc, char **argv){
 	return 0;
 }
 
+int merge_invoker2(int argc, char **argv) {
+	FileReader *asmd, *divd;
+	FILE *out = NULL;
+	asmd = fopen_filereader(argv[1]);
+	divd = fopen_filereader(argv[2]);
+	merge_t *merger;
+	merger = init_merger(3, 100, 0.01, 15);
+	merge_ctgs(merger, asmd, divd, out);
+	free_merger(merger);
+	fclose_filereader(asmd);
+	fclose_filereader(divd);
+
+	return 0;
+}
+/*
 int merge_invoker(int argc, char **argv) {
 	CtgDB *ctgs;
 	FileReader *fr1, *fr2;
@@ -215,6 +230,7 @@ int merge_invoker(int argc, char **argv) {
 	fclose_filereader(fr2);
 	return 0;
 }
+*/
 
 int main(int argc, char **argv){
 	if(argc < 2) return usage();
@@ -223,7 +239,7 @@ int main(int argc, char **argv){
 	} else if(strcasecmp(argv[1], "div") == 0){
 		return div_invoker(argc - 1, argv + 1);
 	} else if(strcasecmp(argv[1], "merge") == 0) {
-		return merge_invoker(argc - 1, argv + 1);
+		return merge_invoker2(argc - 1, argv + 1);
 	} else {
 		return usage();
 	}

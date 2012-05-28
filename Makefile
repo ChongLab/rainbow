@@ -1,11 +1,11 @@
 CC=gcc
-CFLAGS= -W -O2 -Wall -finline-functions -D_FILE_OFFSET_BITS=64
+CFLAGS= -g -W -Wall -finline-functions -D_FILE_OFFSET_BITS=64 
 GLIBS=-lm
-GENERIC_SRC= string.h bitvec.h file_reader.h hashset.h sort.h list.h dna.h heap.h stdaln.h
+GENERIC_SRC= string.h bitvec.h file_reader.h hashset.h sort.h list.h dna.h heap.h stdaln.h 
 
-all: rainbow rbasm rbmergetag ezmsim
+all: rainbow rbasm rbmergetag ezmsim 
 
-rainbow: $(GENERIC_SRC) file_reader.c rainbow.h mergecontig.h cluster.c divide.c stdaln.c mergecontig.c main.c
+rainbow: $(GENERIC_SRC) file_reader.c rainbow.h mergectg.h cluster.c divide.c stdaln.c mergectg.c main.c
 	$(CC) $(CFLAGS) $(GLIBS) -o $@ $^
 
 rbasm: $(GENERIC_SRC) file_reader.c asm_R2.c

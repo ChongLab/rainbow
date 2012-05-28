@@ -30,7 +30,9 @@
 #include "dna.h"
 #include "file_reader.h"
 #include "string.h"
-#include "mergecontig.h"
+//#include "mergecontig.h"
+#include "mergectg.h"
+
 
 #define KMER_SIZE	8
 #define KMER_NUM	4
