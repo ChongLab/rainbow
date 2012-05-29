@@ -24,8 +24,8 @@ struct pathtree_t {
 typedef struct {
 	uint64_t kmer, kpos;
 	uint32_t id; // which contig
-	uint32_t offset;  // offset w.r.t. the current contig
-	uint32_t offset2; // offset of query contig
+	int offset;  // offset w.r.t. the current contig
+	int offset2; // offset of query contig
 } ctg_kmer_t;
 
 #define kmer_code(k) u64hashcode((k).kmer)
@@ -36,7 +36,7 @@ define_list(ctgkmerv, ctg_kmer_t);
 
 typedef struct {
 	uint64_t last; //last kmer position
-	uint32_t offset; // current kmer offset
+	int offset; // current kmer offset
 } link_t;
 
 typedef struct {
@@ -61,6 +61,7 @@ merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_
 void merge_ctgs(merge_t *merger, FileReader *asmd, FileReader *divd, FILE *out);
 void merge_core(merge_t *merger, FILE *out);
 void index_ctgs(merge_t *merger);
+void free_index(merge_t *merger);
 void build_tree(merge_t *merger);
 void free_tree(merge_t *merger);
 void reset_merger(merge_t *merger);
