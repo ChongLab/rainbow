@@ -20,11 +20,6 @@
 #include "mergectg.h"
 #include "rainbow.h"
 
-typedef struct {uint32_t key; uint32_t oldid; char *path;} uuchash_t;
-#define uuchash_code(e) (e).key
-#define uuchash_equals(e1, e2) ((e1).key == (e2).key)
-define_hashset(uuchash, uuchash_t, uuchash_code, uuchash_equals);
-
 void merge_ctgs(merge_t *merger, FileReader *asmd, FileReader *divd, FILE *out) {
 	uuchash_t h, *ph = NULL;
 	uuchash *map = init_uuchash(1023);
@@ -71,7 +66,7 @@ void merge_ctgs(merge_t *merger, FileReader *asmd, FileReader *divd, FILE *out) 
 				}
 				if (count_contigv(merger->ctgs) > 1) {
 					index_ctgs(merger);
-					merge_core(merger, out); //
+					merge_core(merger, out); //TODO
 					free_index(merger);
 				}
 				if (count_contigv(merger->ctgs) >= 1) {
@@ -122,12 +117,12 @@ void merge_ctgs(merge_t *merger, FileReader *asmd, FileReader *divd, FILE *out) 
 	
 	if (count_contigv(merger->ctgs) > 1) {
 		index_ctgs(merger);
-		merge_core(merger, out); // 
+		merge_core(merger, out); // TODO
 		free_index(merger);
 	}
 	
 	if (count_contigv(merger->ctgs) >= 1) {
-		for (i = 0; i < count_contigv(merger->ctgs); i++) { //free seq and paths
+		for (i = 0; i < count_contigv(merger->ctgs); i++) { //free seq 
 			seq = (ref_contigv(merger->ctgs, i))->seq;
 			free(seq);
 			seq = NULL;
@@ -135,21 +130,118 @@ void merge_ctgs(merge_t *merger, FileReader *asmd, FileReader *divd, FILE *out) 
 	}
 	reset_iter_uuchash(map);
 	while ((ph = ref_iter_uuchash(map))) {
-		//fprintf(stdout, "%s\n", ph->path);
-		//fflush(stdout);
 		free(ph->path);
 	}
 	free_string(line);
 	free_uuchash(map);
 }
 
+void prepare_ctgs(merge_t *merger, uint32_t i, contig_t *ctg, uint64_t pos) {
+	clear_ctgkmerv(merger->kmers);
+	clear_ctgkmerv(merger->aux_kmers);
+	uint32_t j, n;
+	int seqlen, idx;
+	ctg_kmer_t K, *t, *tpos;
+	uint64_t kmask = 0xFFFFFFFFFFFFFFFFLLU >> ((32-merger->CTG_KMER_SIZE)*2), next, bt, p;
+
+	seqlen = strlen(ctg->seq);
+	for (j = 0; j < merger->CTG_KMER_SIZE-1; j++)
+		K.kmer = (K.kmer << 2) | base_bit_table[(int)ctg->seq[j]];
+	for (j = 0; j <= (unsigned)seqlen-merger->CTG_KMER_SIZE; j++) {
+		K.kmer = ((K.kmer << 2) | base_bit_table[(int)ctg->seq[j+merger->CTG_KMER_SIZE-1]]) & kmask;
+		t = get_ctgkhash(merger->index, K);
+		bt = t->kpos;
+		if (bt >= pos+seqlen || bt < pos) {
+			tpos = next_ref_ctgkmerv(merger->kmers);
+			tpos->kmer = K.kmer;
+			tpos->kpos = bt;
+			tpos->id = 0;  // TODO
+			tpos->offset = merger->links[bt].offset;
+			tpos->offset2 = j;
+		}
+		while (1) { //tracing positions
+			next = merger->links[bt].last;
+			if (next == bt) break;
+			if (next >= pos+seqlen || next < pos) { // omit the contig and those before it
+				tpos = next_ref_ctgkmerv(merger->kmers);
+				tpos->kmer = K.kmer;
+				tpos->kpos = bt;
+				tpos->id = 0;  // TODO
+				tpos->offset = merger->links[bt].offset;
+				tpos->offset2 = j;
+			}
+			bt = next;
+		}
+	}
+	qsort(as_array_ctgkmerv(merger->kmers), count_ctgkmerv(merger->kmers), sizeof(ctg_kmer_t), cmp_kmer_pos);
+
+	for (j = 0; j < count_ctgkmerv(merger->kmers); j++) {
+		tpos = ref_ctgkmerv(merger->kmers, j);
+	//	printf("%llu\t%llu\t%d\t%d\t%d\n", tpos->kpos,tpos->kmer, tpos->offset, tpos->offset2, tpos->id);
+	}
+
+	//translate positions into ids and jump overlap kmers
+	n = count_contigv(merger->ctgs);
+	t = ref_ctgkmerv(merger->kmers, 0);
+	p = t->kpos;
+	idx = bisearch(merger->idv, n, p, NULL);
+	if (idx < 0) idx = -1 - idx;
+	if (p <= merger->idv[idx]) {
+		if (idx > (int)i) {
+			tpos = next_ref_ctgkmerv(merger->aux_kmers);
+			*tpos = *t;
+			tpos->id  = idx;
+		}
+	}
+	for (j = 1; j < count_ctgkmerv(merger->kmers); j++) {
+		tpos = ref_ctgkmerv(merger->kmers, j);
+		if (tpos->kpos - p >= merger->CTG_KMER_SIZE) {
+			t = tpos;
+			p = t->kpos;
+		} else {
+			continue;
+		}
+
+		if (p <= merger->idv[idx]) {
+			if (idx > (int)i) {
+				tpos = next_ref_ctgkmerv(merger->aux_kmers);
+				*tpos = *t;
+				tpos->id  = idx;
+			}
+		} else {
+			idx = bisearch(merger->idv, n, p, NULL);
+			if (idx < 0) idx = -1 - idx;
+			if (idx > (int)i) {
+				tpos = next_ref_ctgkmerv(merger->aux_kmers);
+				*tpos = *t;
+				tpos->id = idx;
+			}
+		}
+	}
+
+	qsort(as_array_ctgkmerv(merger->aux_kmers), count_ctgkmerv(merger->aux_kmers), sizeof(ctg_kmer_t), cmp_ids);
+
+	for (j = 0; j < count_ctgkmerv(merger->aux_kmers); j++) {
+		tpos = ref_ctgkmerv(merger->aux_kmers, j);
+		printf("%llu\t%llu\t%d\t%d\t%d\n", tpos->kpos,tpos->kmer, tpos->offset, tpos->offset2, tpos->id);
+	}
+	clear_ctgkmerv(merger->kmers);
+	return;
+}
+
 void merge_core(merge_t *merger, FILE *out) {
 	contigv *ctgs = merger->ctgs;
 	contig_t *ctg; uint32_t i;
+	int seqlen;
+	uint64_t pos = 0;
 	for (i = 0; i < count_contigv(ctgs); i++) {
 		ctg = ref_contigv(ctgs, i);
+		seqlen = strlen(ctg->seq);
+		if (seqlen < merger->CTG_KMER_SIZE) continue;
+		prepare_ctgs(merger, i, ctg, pos);
 		fprintf(stdout, "%u\t%u\t%u\t%u\t%s\t%s\n", ctg->id, ctg->clsid, ctg->old_clsid, ctg->sz, ctg->seq, ctg->path);
 		fflush(stdout);
+		pos += seqlen;
 	}
 	fprintf(stdout, "\n");
 }
@@ -162,6 +254,7 @@ void index_ctgs(merge_t *merger) {
 	ctg_kmer_t K, *t;
 	n = count_contigv(merger->ctgs);
 	merger->idv = (uint64_t *) malloc(n * sizeof(uint64_t));
+	link_t *tmp;
 
 	K.kmer = 0;
 	K.kpos = 0;
@@ -173,7 +266,13 @@ void index_ctgs(merge_t *merger) {
 		ctg = ref_contigv(merger->ctgs, i);
 		seqlen = strlen(ctg->seq);
 		if (seqlen < (int)merger->CTG_KMER_SIZE) continue;
-		merger->links = (link_t *)realloc(merger->links, (pos+seqlen)*sizeof(link_t));
+		tmp = (link_t *)realloc(merger->links, (pos+seqlen)*sizeof(link_t));
+		if (tmp == NULL) {
+			free(merger->links);
+			fprintf(stderr, "Memory allocation error!!!\n");
+			abort();
+		}
+		merger->links = tmp;
 		merger->idv[i] = pos+seqlen-1;
 		
 		for (j = 0; j < merger->CTG_KMER_SIZE-1; j++)
@@ -181,7 +280,6 @@ void index_ctgs(merge_t *merger) {
 		for (j = 0; j <= (unsigned)seqlen-merger->CTG_KMER_SIZE; j++) {
 			K.kmer = ((K.kmer << 2) | base_bit_table[(int)ctg->seq[j+merger->CTG_KMER_SIZE-1]]) & kmask;
 			t = prepare_ctgkhash(merger->index, K, &exists);
-		//printf("%d\n", pos+j);
 			if (exists) {
 				merger->links[pos+j].last = t->kpos;
 				merger->links[pos+j].offset = j;
@@ -216,14 +314,16 @@ merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_
 
 void reset_merger(merge_t *merger) {
 	clear_contigv(merger->ctgs);
-	clear_ctgkmerv(merger->kmers);
-	clear_ctgkmerv(merger->aux_kmers);
+	//clear_ctgkmerv(merger->kmers);
+	//clear_ctgkmerv(merger->aux_kmers);
 }
 
 void free_index(merge_t *merger) {
 	free_ctgkhash(merger->index);
 	free(merger->links);
 	free(merger->idv);
+	merger->links = NULL;
+	merger->idv = NULL;
 }
 
 void free_merger(merge_t *merger) {
