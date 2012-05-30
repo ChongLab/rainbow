@@ -6,6 +6,7 @@
 #include "file_reader.h"
 #include "hashset.h"
 #include "string.h"
+#include "stdaln.h"
 
 typedef struct {
 	uint32_t id, clsid, old_clsid, sz;
@@ -54,13 +55,14 @@ typedef struct {
 	uint64_t *idv;  // to search translate pos to ids
 	ctgkmerv *kmers;   // all kmers of each kmer of query contig
 	ctgkmerv *aux_kmers; // translated ids
+	u32list *ids; // ctg ids prepare to handle, those parse min_kmer
 	uint32_t min_kmer; // parameter: # kmers to define two similar contigs
 	uint32_t min_overlap; // parameter
 	float het; // parameter
 	uint32_t CTG_KMER_SIZE; // parameter
 } merge_t;
 
-static inline int cmp_kmer_pos (const void *e1, const void *e2) {
+static inline int cmp_kmer_pos(const void *e1, const void *e2) {
 	ctg_kmer_t *t1, *t2;
 	t1 = (ctg_kmer_t *)e1;
 	t2 = (ctg_kmer_t *)e2;
@@ -86,17 +88,39 @@ static inline int cmp_ids(const void *e1, const void *e2) {
 		return -1;
 }
 
+static inline int cmp_ctg_clsids(const void *e1, const void *e2) {
+	contig_t *t1, *t2;
+	t1 = (contig_t *)e1;
+	t2 = (contig_t *)e2;
+
+	if (t1->clsid == t2->clsid)
+		return 0;
+	else if (t1->clsid > t2->clsid)
+		return 1;
+	else
+		return -1;
+
+}
+
 #ifdef __CPLUSPLUS
 extern "C" {
 #endif
 
 merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_t kmersize);
 void merge_ctgs(merge_t *merger, FileReader *asmd, FileReader *divd, FILE *out);
-void merge_core(merge_t *merger, FILE *out);
+void merge_core(merge_t *merger);
 void index_ctgs(merge_t *merger);
 void free_index(merge_t *merger);
 void build_tree(merge_t *merger);
 void prepare_ctgs(merge_t *merger, uint32_t i, contig_t *ctg, uint64_t pos);
+int is_onegroup(merge_t *merger, contig_t *c1, contig_t *c2);
+int is_similar_enough(merge_t *merger, contig_t *c1, contig_t *c2);
+void merge_ctg(merge_t *merger, contig_t *ctg1, contig_t *ctg2);
+void update_merger(merge_t *merger, contig_t *ctg1, contig_t *ctg2);
+void gather_leaves(pathtree_t *tree, u32list *leaves);
+void prefix_path(char *s1, char *s2, int n, char *pre);
+void print_clusters(merge_t *merger, FILE *out);
+void destroy_tree(pathtree_t *t);
 void free_tree(merge_t *merger);
 void reset_merger(merge_t *merger);
 void free_merger(merge_t *merger);

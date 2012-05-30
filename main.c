@@ -44,8 +44,10 @@ int usage(){
 	"  -a <string> Input rbasm output file [stdin]\n"
 	"  -v <string> Input rainbow divided file [stdin]\n"
 	"  -p <float>  maximum heterozygosity to collapse, should be specifed according to the estimated\n"
-	"              polymorphism of the species [0.01]\n"
+	"              polymorphism of the species [0.02]\n"
 	"  -l <int>    Minimum overlap to collapse two contigs [100]\n"
+	"  -k <int>    Minimum number of kmers to define similarity between two contigs [5]\n"
+	"  -o <string> Output file for merged contigs, one line per cluster [stdout]\n" 
 //	"  -n <int>    Maximum number of contigs to execute pairwise alignment [50]\n"
 	"\n",
 	version
@@ -170,67 +172,57 @@ int div_invoker(int argc, char **argv){
 	return 0;
 }
 
-int merge_invoker2(int argc, char **argv) {
+int merge_invoker(int argc, char **argv) {
 	FileReader *asmd, *divd;
 	FILE *out = NULL;
-	asmd = fopen_filereader(argv[1]);
-	divd = fopen_filereader(argv[2]);
-	merge_t *merger;
-	merger = init_merger(3, 100, 0.01, 15);
-	merge_ctgs(merger, asmd, divd, out);
-	free_merger(merger);
-	fclose_filereader(asmd);
-	fclose_filereader(divd);
+	char *asmdf = NULL, *divdf = NULL, *outfile = NULL;
+	uint32_t min_kmer = 5;
+	uint32_t min_overlap = 100;
+	float het = 0.02; int c;
+	uint32_t kmersize = 15;
 
-	return 0;
-}
-/*
-int merge_invoker(int argc, char **argv) {
-	CtgDB *ctgs;
-	FileReader *fr1, *fr2;
-	float het = 0.01;
-	uint32_t min_overlap = 100, max_nctg = 50;
-	char *infile1, *infile2;
-	infile1 = NULL;
-	infile2 = NULL;
-	int c;
-
-	while ((c = getopt(argc, argv, "ha:v:l:p:n:")) != -1) {
+	while ((c = getopt(argc, argv, "ha:v:l:p:k:o:s:")) != -1) {
 		switch (c) {
 			case 'h': return usage();
-			case 'a': infile1 = optarg; break;
-			case 'v': infile2 = optarg; break;
+			case 'a': asmdf = optarg; break;
+			case 'v': divdf = optarg; break;
 			case 'l': min_overlap = atoi(optarg); break;
 			case 'p': het = atof(optarg); break;
-			case 'n': max_nctg = atoi(optarg); break;
+			case 'k': min_kmer = atoi(optarg); break;
+			case 'o': outfile = optarg; break;
+			case 's': kmersize = atoi(optarg); break;
 			default: return usage();
 		}
 	}
 
-	if (infile1) {
-		if ((fr1 = fopen_filereader(infile1)) == NULL ) {
-			fprintf(stdout, " -- Cannot open %s in %s -- %s:%d --\n", infile1, __FUNCTION__, __FILE__, __LINE__);
+	if (asmdf) {
+		if ((asmd = fopen_filereader(asmdf)) == NULL) {
+			fprintf(stdout, " -- Cannot open %s in %s -- %s:%d --\n", asmdf, __FUNCTION__, __FILE__, __LINE__);
 			abort();
-		} 
-	} else {
-		fr1 = stdin_filereader();
-	}
-	if (infile2) {
-		if ((fr2 = fopen_filereader(infile2)) == NULL ) {
-			fprintf(stdout, " -- Cannot open %s in %s -- %s:%d --\n", infile2, __FUNCTION__, __FILE__, __LINE__);
+		}
+	} else asmd = stdin_filereader();
+
+	if (divdf) {
+		if ((divd = fopen_filereader(divdf)) == NULL) {
+			fprintf(stdout, " -- Cannot open %s in %s -- %s:%d --\n", divdf, __FUNCTION__, __FILE__, __LINE__);
 			abort();
-		} 
-	} else {
-		fr2 = stdin_filereader();
-	}
-	ctgs = load_ctgdb(fr1, fr2);
-	execute_pwaln(ctgs, min_overlap, het, max_nctg);
-	free_load_ctgdb(ctgs);
-	fclose_filereader(fr1);
-	fclose_filereader(fr2);
+		}
+	} else divd = stdin_filereader();
+	if (outfile) {
+		if ((out = fopen(outfile, "w")) == NULL) {
+			fprintf(stdout, " -- Cannot write %s in %s -- %s:%d --\n", divdf, __FUNCTION__, __FILE__, __LINE__);
+			abort();
+		}
+	} else out = stdout;
+	merge_t *merger;
+	merger = init_merger(min_kmer, min_overlap, het, kmersize);
+	merge_ctgs(merger, asmd, divd, out);
+	free_merger(merger);
+	fclose_filereader(asmd);
+	fclose_filereader(divd);
+	if (outfile) fclose(out);
 	return 0;
 }
-*/
 
 int main(int argc, char **argv){
 	if(argc < 2) return usage();
@@ -239,7 +231,7 @@ int main(int argc, char **argv){
 	} else if(strcasecmp(argv[1], "div") == 0){
 		return div_invoker(argc - 1, argv + 1);
 	} else if(strcasecmp(argv[1], "merge") == 0) {
-		return merge_invoker2(argc - 1, argv + 1);
+		return merge_invoker(argc - 1, argv + 1);
 	} else {
 		return usage();
 	}
