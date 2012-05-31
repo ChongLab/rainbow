@@ -151,6 +151,11 @@ void prepare_ctgs(merge_t *merger, uint32_t i, contig_t *ctg, uint64_t pos) {
 	ctg_kmer_t K, *t, *tpos;
 	uint64_t kmask = 0xFFFFFFFFFFFFFFFFLLU >> ((32-merger->CTG_KMER_SIZE)*2), next, bt, p;
 
+	K.kmer = 0;
+	K.kpos = 0;
+	K.id = 0;
+	K.offset = -1;
+	K.offset2 = -1;
 	seqlen = strlen(ctg->seq);
 	for (j = 0; j < merger->CTG_KMER_SIZE-1; j++)
 		K.kmer = (K.kmer << 2) | base_bit_table[(int)ctg->seq[j]];

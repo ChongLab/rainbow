@@ -32,7 +32,7 @@ typedef struct {
 	uint32_t base;
 } BaseCnt;
 
-uint32_t call_key_col(Div *div, uint32_t gid){
+uint32_t _call_key_col(Div *div, uint32_t gid){
 	ReadInfo *rd;
 	u32list *grp;
 	uint32_t i, j, col, row, key, c, max_non, tol, base;
@@ -70,6 +70,104 @@ uint32_t call_key_col(Div *div, uint32_t gid){
 	return (key << 2) | base;
 }
 
+typedef struct {
+	uint32_t col, cnt, base;
+} col_base_t;
+
+define_list(cbv, col_base_t);
+
+uint32_t call_key_col(Div *div, uint32_t gid){
+	ReadInfo *rd;
+	u32list *grp;
+	uint32_t i, j, col, row, key, c, max_non, tol, base;
+	BaseCnt cnts[4];
+	//TODO
+	cbv *cbs;
+	col_base_t *cb, *cb1;
+	u32list *ps[2];
+	uint32_t n_p1, n_p2, idx, min_mm, mm1, mm2;
+	key = div->n_col;
+	base = 0;
+	grp = get_u32slist(div->grps, gid);
+	max_non = 0;
+	//TODO
+	cbs = init_cbv(12);
+	ps[0]  = init_u32list(32);
+	ps[1]  = init_u32list(32);
+	for(col=0;col<div->n_col;col++){
+		for(i=0;i<4;i++){ cnts[i].base = i; cnts[i].cnt = 0; }
+		for(row=0;row<count_u32list(grp);row++){
+			rd = ref_rilist(div->rds, get_u32list(grp, row));
+			if(rd->seqlen1 <= col) continue;
+			c  = base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + col)];
+			cnts[c&0x03].cnt ++;
+		}
+		tol = cnts[0].cnt + cnts[1].cnt + cnts[2].cnt + cnts[3].cnt;
+		if(tol == 0) break;
+		for(i=0;i<2;i++){
+			for(j=3;j>i;j--){
+				if(cnts[j].cnt > cnts[j-1].cnt){
+					swap_tmp(cnts[j].cnt, cnts[j-1].cnt, c);
+					swap_tmp(cnts[j].base, cnts[j-1].base, c);
+				}
+			}
+		}
+		if(cnts[1].cnt < div->k_allele) continue;
+		if(cnts[1].cnt < div->K_allele && cnts[1].cnt < div->min_freq * tol) continue;
+		cb = next_ref_cbv(cbs);
+		cb->col  = col;
+		cb->base = cnts[1].base;
+		cb->cnt  = cnts[1].cnt;
+		if(0 && cnts[1].cnt > max_non){
+			max_non = cnts[1].cnt;
+			key = col;
+			base = cnts[1].base;
+		}
+	}
+	if(cbs->size == 1){
+		key = ref_cbv(cbs, 0)->col;
+		base = ref_cbv(cbs, 0)->base;
+	}
+	if(cbs->size > 1){
+		encap_u32list(ps[0], cbs->size);
+		encap_u32list(ps[1], cbs->size);
+		min_mm = 0xFFFFFFFU;
+		for(i=0;i<cbs->size;i++){
+			cb = ref_cbv(cbs, i);
+			n_p1 = cb->cnt;
+			n_p2 = grp->size - cb->cnt;
+			memset(ps[0]->buffer, 0, cbs->size * 4);
+			memset(ps[1]->buffer, 0, cbs->size * 4);
+			for(row=0;row<grp->size;row++){
+				rd = ref_rilist(div->rds, get_u32list(grp, row));
+				if(rd->seqlen1 <= cb->col) idx = 1;
+				else idx = (base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + cb->col)] != cb->base);
+				for(j=0;j<cbs->size;j++){
+					if(j == i) continue;
+					cb1 = ref_cbv(cbs, j);
+					ps[idx]->buffer[j] += (base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + cb1->col)] == cb1->base);
+				}
+			}
+			mm1 = mm2 = 0;
+			for(j=0;j<cbs->size;j++){
+				if(j == i) continue;
+				mm1 += ps[0]->buffer[j] * (n_p1 - ps[0]->buffer[j]);
+				mm2 += ps[1]->buffer[j] * (n_p2 - ps[1]->buffer[j]);
+			}
+			if(mm1 < mm2) mm1 = mm2;
+			if(mm1 < min_mm){
+				min_mm = mm1;
+				key = cb->col;
+				base = cb->base;
+			}
+		}
+	}
+	free_cbv(cbs);
+	free_u32list(ps[0]);
+	free_u32list(ps[1]);
+	return (key << 2) | base;
+}
+
 void dividing_core(Div *div, uint32_t gid, int dep){
 	ReadInfo *rd;
 	u32list *grp, *sub;
@@ -90,6 +188,12 @@ void dividing_core(Div *div, uint32_t gid, int dep){
 	}
 	grp = get_u32slist(div->grps, gid);
 	mark0 = get_u64list(div->markers, gid);
+	char str[65];
+	for(i=0;(int)i<dep;i++){
+		str[i] = '0' + ((mark0 >> i) & 0x01);
+	}
+	str[i] = 0;
+	fprintf(stderr, "%s\t%d\t%c\n", str, col, "ACGT"[b]);
 	if(dep < 64){
 		push_u64list(div->markers, mark0);
 		push_u64list(div->markers, mark0 | (1LLU << dep));
