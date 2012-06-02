@@ -94,6 +94,12 @@ define_list(rilist, ReadInfo);
 define_list(u32slist, u32list*);
 
 typedef struct {
+	uint32_t col, cnt, base;
+} col_base_t;
+
+define_list(cbv, col_base_t);
+
+typedef struct {
 	uint32_t gidoff;
 	rilist *rds;
 	u8list *seqs;
@@ -101,6 +107,9 @@ typedef struct {
 	u64list *markers;
 	u32list *deps;
 	u32list *gids;
+	cbv *cbs;
+	u32list *ps1[4];
+	u32list *ps2[4];
 	uint32_t n_col;
 	uint32_t k_allele, K_allele;
 	float min_freq;
