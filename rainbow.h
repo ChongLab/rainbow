@@ -34,15 +34,15 @@
 #include "mergectg.h"
 
 
-#define KMER_SIZE	8
-#define KMER_NUM	4
+#define KMER_SIZE	13
+#define KMER_NUM	7
 
 typedef struct {
-	uint64_t kmer:32, seqid:32;
+	uint32_t kmer1, kmer2, seqid;
 } kmer_t;
 
-#define kmer_hashcode(k) u32hashcode((k).kmer)
-#define kmer_equals(k1, k2) ((k1).kmer == (k2).kmer)
+#define kmer_hashcode(k) u64hashcode((((uint64_t)(k).kmer1) << 32) | (k).kmer2)
+#define kmer_equals(k1, k2) (((k1).kmer1 == (k2).kmer1) && ((k1).kmer2 == (k2).kmer2))
 define_hashset(khash, kmer_t, kmer_hashcode, kmer_equals);
 
 typedef struct {
@@ -104,7 +104,7 @@ typedef struct {
 	rilist *rds;
 	u8list *seqs;
 	u32slist *grps, *cache;
-	u64list *markers;
+	u64list *markers[4];
 	u32list *deps;
 	u32list *gids;
 	cbv *cbs;

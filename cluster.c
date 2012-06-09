@@ -99,24 +99,42 @@ uint8_t cal_2seq_mm_core(uint64_t *seq1, uint64_t *seq2, uint8_t len1, uint8_t l
 
 uint32_t linking_core(Cluster *cluster, uint32_t seqid, uint64_t *seq, uint32_t seqlen){
 	kmer_t K, *k;
-	uint32_t i, j, off, c;
+	uint32_t j, off, c;
 	uint32_t link;
 	int exists;
 	if(seqlen < (cluster->idxs[1] + 1) * KMER_SIZE) return seqid;
-	K.kmer = 0;
+	K.kmer1 = 0;
+	K.kmer2 = 0;
 	K.seqid = seqid;
+	{
+		off = cluster->idxs[0] * KMER_SIZE;
+		for(j=0;j<KMER_SIZE;j++){
+			c = bits2bit(seq, off + j);
+			K.kmer1 = (K.kmer1 << 2) | c;
+		}
+	}
+	{
+		off = cluster->idxs[1] * KMER_SIZE;
+		for(j=0;j<KMER_SIZE;j++){
+			c = bits2bit(seq, off + j);
+			K.kmer2 = (K.kmer2 << 2) | c;
+		}
+	}
+	/*
 	for(i=0;i<2;i++){
 		off = cluster->idxs[i] * KMER_SIZE;
 		for(j=0;j<KMER_SIZE;j++){
 			c = bits2bit(seq, off + j);
-			K.kmer = (K.kmer << 2) | c;
+			K.kmer1 = (K.kmer1 << 2) | c;
 		}
 	}
+	*/
 	k = prepare_khash(cluster->index, K, &exists);
 	if(exists){
 		link = k->seqid;
 	} else {
-		k->kmer = K.kmer;
+		k->kmer1 = K.kmer1;
+		k->kmer2 = K.kmer2;
 		link = seqid;
 	}
 	k->seqid = seqid;

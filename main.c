@@ -30,19 +30,20 @@ int usage(){
 	"\n"
 	" cluster\n"
 	"  -1 <string> Input fasta/fastq file, supports multiple '-1'\n"
-	"  -2 <string> Input fasta/fasta file, supports multiple '-2' [null]\n"
+	"  -2 <string> Input fasta/fastq file, supports multiple '-2' [null]\n"
 	"  -l <int>    Read length, default: 0 variable\n"
 	//"  -r <int>    rank of input files [1]\n"
 	"  -m <int>    Maximum mismatches [2]\n"
 	"  -e <int>    Exactly matching threshold [2000]\n"
 	" div\n"
 	"  -i <string> Input file [stdin]\n"
+	"  -o <string> Output file [stdout]\n"
 	"  -k <int>    K_allele, min variants to create a new group [2]\n"
 	"  -K <int>    K_allele, divide regardless of frequency when num of variants exceed this value [50]\n"
 	"  -f <float>  Frequency, min variant frequency to create a new group [0.2]\n"
 	" merge \n"
-	"  -a <string> Input rbasm output file [stdin]\n"
-	"  -v <string> Input rainbow divided file [stdin]\n"
+	"  -i <string> Input rbasm output file [stdin]\n"
+//	"  -v <string> Input rainbow divided file [stdin]\n"
 	"  -p <float>  maximum heterozygosity to collapse, should be specifed according to the estimated\n"
 	"              polymorphism of the species [0.02]\n"
 	"  -l <int>    Minimum overlap to collapse two contigs [100]\n"
@@ -173,19 +174,19 @@ int div_invoker(int argc, char **argv){
 }
 
 int merge_invoker(int argc, char **argv) {
-	FileReader *asmd, *divd;
+	FileReader *divd;
 	FILE *out = NULL;
-	char *asmdf = NULL, *divdf = NULL, *outfile = NULL;
+	char *divdf = NULL, *outfile = NULL;
 	uint32_t min_kmer = 5;
 	uint32_t min_overlap = 100;
 	float het = 0.02; int c;
 	uint32_t kmersize = 15;
 
-	while ((c = getopt(argc, argv, "ha:v:l:p:k:o:s:")) != -1) {
+	while ((c = getopt(argc, argv, "hi:l:p:k:o:s:")) != -1) {
 		switch (c) {
 			case 'h': return usage();
-			case 'a': asmdf = optarg; break;
-			case 'v': divdf = optarg; break;
+	//		case 'a': asmdf = optarg; break;
+			case 'i': divdf = optarg; break;
 			case 'l': min_overlap = atoi(optarg); break;
 			case 'p': het = atof(optarg); break;
 			case 'k': min_kmer = atoi(optarg); break;
@@ -194,14 +195,14 @@ int merge_invoker(int argc, char **argv) {
 			default: return usage();
 		}
 	}
-
+/*
 	if (asmdf) {
 		if ((asmd = fopen_filereader(asmdf)) == NULL) {
 			fprintf(stdout, " -- Cannot open %s in %s -- %s:%d --\n", asmdf, __FUNCTION__, __FILE__, __LINE__);
 			abort();
 		}
 	} else asmd = stdin_filereader();
-
+*/
 	if (divdf) {
 		if ((divd = fopen_filereader(divdf)) == NULL) {
 			fprintf(stdout, " -- Cannot open %s in %s -- %s:%d --\n", divdf, __FUNCTION__, __FILE__, __LINE__);
@@ -216,9 +217,10 @@ int merge_invoker(int argc, char **argv) {
 	} else out = stdout;
 	merge_t *merger;
 	merger = init_merger(min_kmer, min_overlap, het, kmersize);
-	merge_ctgs(merger, asmd, divd, out);
+//	merge_ctgs(merger, asmd, divd, out);
+	merge_ctgs(merger, divd, out);
 	free_merger(merger);
-	fclose_filereader(asmd);
+//	fclose_filereader(asmd);
 	fclose_filereader(divd);
 	if (outfile) fclose(out);
 	return 0;
