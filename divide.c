@@ -181,7 +181,7 @@ void dividing_core(Div *div, uint32_t gid, int dep){
 	u32list *grp, *sub;
 //	uint64_t mark0;
 	uint32_t i, j, col, rid, gids[2], b;
-	col = _call_key_col(div, gid);
+	col = call_key_col(div, gid);
 	b = col & 0x03;
 	col >>= 2;
 	if(col >= div->n_col){
