@@ -104,8 +104,9 @@ void free_ctgs(merge_t *merger) {
 }
 
 void print_asm(merge_t *merger, FILE *out) {
-	uint32_t i, j, k, cid;
-	contig_t *ctg; FContig *c;
+	uint32_t i, k;
+//	uint32_t i, j, k, cid;
+	contig_t *ctg; //FContig *c;
 	read_t *rd;
 
 //	reset_iter_ctgset(merger->ctgs);
@@ -113,7 +114,7 @@ void print_asm(merge_t *merger, FILE *out) {
 		ctg = ref_contigv(merger->ctgs, k);
 //	while ((ctg = ref_iter_ctgset(merger->ctgs))) {
 		if (merger->flag && !ctg->closed && ctg->rds->size >= merger->min_read && ctg->rds->size <= merger->max_read) {  // have used ef
-			/*
+			
 			rd = ref_readv(ctg->rds, 0);
 			reset_ef(merger->ef, ctg->id, rd->seq, rd->rd_len, merger->min_ol, merger->min_sm);
 			for (i = 1; i < ctg->rds->size; i++) {
@@ -123,7 +124,8 @@ void print_asm(merge_t *merger, FILE *out) {
 			align_reads_ef(merger->ef);
 			asm_ef_ctgs(merger->ef);
 			output_ef_ctgs(merger->ef, out);
-			*/
+			
+			/*
 			cid = 0;
 			fprintf(out, "E %u\n", ctg->id);
 			for(i=0;i<vec_size(ctg->efctgs);i++){
@@ -141,7 +143,7 @@ void print_asm(merge_t *merger, FILE *out) {
 				}
 				fprintf(out, "\n//\n");
 				fflush(out);
-			} 
+			} */
 			/*
 			if (!ctg->closed && ctg->rds->size >= merger->min_read && ctg->rds->size <= merger->max_read) {
 				fprintf(out, ">%d\n%s\n", ctg->id, ctg->seq);
@@ -272,27 +274,63 @@ void merge_leaves(merge_t *merger, uint32_t id1, uint32_t id2) {
 	memset(prefix, 0, n+1);
 	prefix_path(c1->path, c2->path, n, prefix);
 	rd = ref_readv(c1->rds, 0);
-	reset_ef(merger->ef, c1->id, rd->seq, rd->rd_len, merger->min_ol, merger->min_sm);
+//	reset_ef(merger->ef, c1->id, rd->seq, rd->rd_len, merger->min_ol, merger->min_sm);
 	for (i = 1; i < c1->rds->size; i++) {
 		rd = ref_readv(c1->rds, i);
-		add_read2ef(merger->ef, rd->seq, rd->seq_id, rd->rd_len, rd->rank);
+//		add_read2ef(merger->ef, rd->seq, rd->seq_id, rd->rd_len, rd->rank);
 		if (c == c2) push_readv(c->rds, *rd);
 	}
 	for (i = 0; i < c2->rds->size; i++) {
 		rd = ref_readv(c2->rds, i);
-		add_read2ef(merger->ef, rd->seq, rd->seq_id, rd->rd_len, rd->rank);
+//		add_read2ef(merger->ef, rd->seq, rd->seq_id, rd->rd_len, rd->rank);
 		if (c == c1) push_readv(c->rds, *rd);
 	}
 	free(c->path);
 	c->path = NULL;
 	c->path = strdup(prefix);
-	if (c->seq) free(c->seq);
-	if (c->sec_seq) free(c->sec_seq);
-	c->seq = c->sec_seq = NULL;
-	align_reads_ef(merger->ef);
-	asm_ef_ctgs(merger->ef);
+//	if (c->seq) free(c->seq);
+//	if (c->sec_seq) free(c->sec_seq);
+//	c->seq = c->sec_seq = NULL;
+	if (strlen(c1->seq) > strlen(c2->seq)) {
+		if (c==c2) { 
+			if (c->seq) free(c->seq);
+			c->seq = strdup(c1->seq);
+		}
+	} else {
+		if (c==c1) {
+			if (c->seq) free(c->seq);
+			c->seq = strdup(c2->seq);
+		}
+	}
+/*
+	if (c1->sec_seq && !c2->sec_seq) {
+		if (c == c2) {
+			c->sec_seq = strdup(c1->sec_seq);
+		}
+	}
+
+	if (!c1->sec_seq && c2->sec_seq) {
+		if (c == c1) {
+			c->sec_seq = strdup(c2->sec_seq);
+		}
+	}
+
+	if (c1->sec_seq && c2->sec_seq && strlen(c1->sec_seq) > strlen(c2->sec_seq)) {
+		if (c == c2) {
+			if (c->sec_seq) free(c->sec_seq);
+			c->sec_seq = strdup(c1->sec_seq);
+		}
+	} else {
+		if (c == c1) {
+			if (c->sec_seq) free(c->sec_seq);
+			c->sec_seq = strdup(c2->sec_seq);
+		}
+	}
+*/
+	//	align_reads_ef(merger->ef);
+//	asm_ef_ctgs(merger->ef);
 //	output_ef_ctgs(merger->ef, stderr);
-	assign_best_ctg(merger, c);
+//	assign_best_ctg(merger, c);
 	free(prefix);
 } 
 
