@@ -302,7 +302,7 @@ void merge_leaves(merge_t *merger, uint32_t id1, uint32_t id2) {
 			c->seq = strdup(c2->seq);
 		}
 	}
-/*
+
 	if (c1->sec_seq && !c2->sec_seq) {
 		if (c == c2) {
 			c->sec_seq = strdup(c1->sec_seq);
@@ -315,18 +315,19 @@ void merge_leaves(merge_t *merger, uint32_t id1, uint32_t id2) {
 		}
 	}
 
-	if (c1->sec_seq && c2->sec_seq && strlen(c1->sec_seq) > strlen(c2->sec_seq)) {
-		if (c == c2) {
-			if (c->sec_seq) free(c->sec_seq);
-			c->sec_seq = strdup(c1->sec_seq);
-		}
-	} else {
-		if (c == c1) {
-			if (c->sec_seq) free(c->sec_seq);
-			c->sec_seq = strdup(c2->sec_seq);
-		}
+	if (c1->sec_seq && c2->sec_seq) {
+		if (strlen(c1->sec_seq) > strlen(c2->sec_seq)) {
+			if (c == c2) {
+				if (c->sec_seq) free(c->sec_seq);
+				c->sec_seq = strdup(c1->sec_seq);
+			}
+		} else {
+			if (c == c1) {
+				if (c->sec_seq) free(c->sec_seq);
+				c->sec_seq = strdup(c2->sec_seq);
+			}
+		} 
 	}
-*/
 	//	align_reads_ef(merger->ef);
 //	asm_ef_ctgs(merger->ef);
 //	output_ef_ctgs(merger->ef, stderr);
