@@ -108,8 +108,8 @@ typedef struct {
 	u32list *deps;
 	u32list *gids;
 	cbv *cbs;
-	u32list *ps1[4];
-	u32list *ps2[4];
+	u32list *ps1;
+	u32list *ps2;
 	uint32_t n_col;
 	uint32_t k_allele, K_allele;
 	float min_freq;

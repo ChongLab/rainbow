@@ -32,44 +32,6 @@ typedef struct {
 	uint32_t base;
 } BaseCnt;
 
-uint32_t _call_key_col(Div *div, uint32_t gid){
-	ReadInfo *rd;
-	u32list *grp;
-	uint32_t i, j, col, row, key, c, max_non, tol, base;
-	BaseCnt cnts[4];
-	key = div->n_col;
-	base = 0;
-	grp = get_u32slist(div->grps, gid);
-	max_non = 0;
-	for(col=0;col<div->n_col;col++){
-		for(i=0;i<4;i++){ cnts[i].base = i; cnts[i].cnt = 0; }
-		for(row=0;row<count_u32list(grp);row++){
-			rd = ref_rilist(div->rds, get_u32list(grp, row));
-			if(rd->seqlen1 <= col) continue;
-			c  = base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + col)];
-			cnts[c&0x03].cnt ++;
-		}
-		tol = cnts[0].cnt + cnts[1].cnt + cnts[2].cnt + cnts[3].cnt;
-		if(tol == 0) break;
-		for(i=0;i<2;i++){
-			for(j=3;j>i;j--){
-				if(cnts[j].cnt > cnts[j-1].cnt){
-					swap_tmp(cnts[j].cnt, cnts[j-1].cnt, c);
-					swap_tmp(cnts[j].base, cnts[j-1].base, c);
-				}
-			}
-		}
-		if(cnts[1].cnt < div->k_allele) continue;
-		if(cnts[1].cnt < div->K_allele && cnts[1].cnt < div->min_freq * tol) continue;
-		if(cnts[1].cnt > max_non){
-			max_non = cnts[1].cnt;
-			key = col;
-			base = cnts[1].base;
-		}
-	}
-	return (key << 2) | base;
-}
-
 static inline uint32_t C_N_2(uint32_t n){
 	if(n == 0) return 0;
 	else return n * (n - 1) / 2;
@@ -94,7 +56,7 @@ uint32_t call_key_col(Div *div, uint32_t gid){
 		for(row=0;row<count_u32list(grp);row++){
 			rd = ref_rilist(div->rds, get_u32list(grp, row));
 			if(rd->seqlen1 <= col) continue;
-			c  = base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + col)];
+			c = div->seqs->buffer[rd->seqoff + col];
 			cnts[c&0x03].cnt ++;
 		}
 		tol = cnts[0].cnt + cnts[1].cnt + cnts[2].cnt + cnts[3].cnt;
@@ -119,29 +81,26 @@ uint32_t call_key_col(Div *div, uint32_t gid){
 		base = ref_cbv(div->cbs, 0)->base;
 	}
 	if(div->cbs->size > 1){
-		for (i = 0; i < 4; i++) {
-			encap_u32list(div->ps1[i], div->n_col);
-			encap_u32list(div->ps2[i], div->n_col);
-		}
+		encap_u32list(div->ps1, div->n_col * 4);
+		encap_u32list(div->ps2, div->n_col * 4);
 		min_mm = 10000000;
 		for(i=0;i<div->cbs->size;i++){
 			cb = ref_cbv(div->cbs, i);
 			n_p1 = cb->cnt;
 			n_p2 = grp->size - cb->cnt;
-			for (j = 0; j < 4; j++) {
-				memset(div->ps1[j]->buffer, 0, div->n_col * 4);
-				memset(div->ps2[j]->buffer, 0, div->n_col * 4); 
-			}
+			memset(div->ps1->buffer, 0, div->n_col * 4 * 4);
+			memset(div->ps2->buffer, 0, div->n_col * 4 * 4); 
 			for(row=0;row<grp->size;row++){
 				rd = ref_rilist(div->rds, get_u32list(grp, row));
 				if(rd->seqlen1 <= cb->col) idx = 1;
-				else idx = (base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + cb->col)] != cb->base);
-				for(j=0;j<div->n_col;j++){
-					if(j == i) continue;
-					if(idx){
-						div->ps2[base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + j)]]->buffer[j] ++;
-					} else {
-						div->ps1[base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + j)]]->buffer[j] ++;
+				else idx = (div->seqs->buffer[rd->seqoff + cb->col] != cb->base);
+				if(idx){
+					for(j=0;j<div->n_col;j++){
+						div->ps2->buffer[div->seqs->buffer[rd->seqoff + j] + 4 * j] ++;
+					}
+				} else {
+					for(j=0;j<div->n_col;j++){
+						div->ps1->buffer[div->seqs->buffer[rd->seqoff + j] + 4 * j] ++;
 					}
 				}
 			}
@@ -150,11 +109,9 @@ uint32_t call_key_col(Div *div, uint32_t gid){
 				if(j == i) continue;
 				s1 = C_N_2(n_p1);
 				s2 = C_N_2(n_p2);
-				//fprintf(stdout, " -- %u %u %u %u in %s -- %s:%d --\n", n_p1, n_p2, s1, s2, __FUNCTION__, __FILE__, __LINE__);
 				for (k = 0; k < 4; k++) {
-					//fprintf(stdout, " -- %u = %u --\n", div->ps1[k]->buffer[j], C_N_2(div->ps1[k]->buffer[j]));
-					s1 -= C_N_2(div->ps1[k]->buffer[j]);
-					s2 -= C_N_2(div->ps2[k]->buffer[j]);
+					s1 -= C_N_2(div->ps1->buffer[k + 4 * j]);
+					s2 -= C_N_2(div->ps2->buffer[k + 4 * j]);
 				}
 				MM1 += s1;
 				MM2 += s2;
@@ -219,7 +176,7 @@ void dividing_core(Div *div, uint32_t gid, int dep){
 	for(i=0;i<count_u32list(grp);i++){
 		rid = get_u32list(grp, i);
 		rd = ref_rilist(div->rds, rid);
-		if(rd->seqlen1 >= col && base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + col)] == b){
+		if(rd->seqlen1 >= col && div->seqs->buffer[rd->seqoff + col] == b){
 			push_u32list(get_u32slist(div->grps, gids[1]), rid);
 		} else {
 			push_u32list(get_u32slist(div->grps, gids[0]), rid);
@@ -234,8 +191,11 @@ void dividing(Div *div, uint32_t old_gid, FILE *out){
 	ReadInfo *rd;
 	u32list *grp;
 	uint64_t marker;
-	uint32_t i, j, gid, dep;
+	uint32_t i, j, k, gid, dep;
 	char route[257];
+	String *seq1, *seq2;
+	seq1 = init_string(1024);
+	seq2 = init_string(1024);
 	for (i = 0; i < 4; i++) {
 		clear_u64list(div->markers[i]);
 		push_u64list(div->markers[i], 0); 
@@ -254,14 +214,18 @@ void dividing(Div *div, uint32_t old_gid, FILE *out){
 		gid = ++div->gidoff;
 		for(j=0;j<count_u32list(grp);j++){
 			rd = ref_rilist(div->rds, get_u32list(grp, j));
+			for(k=0;k<rd->seqlen1;k++) seq1->string[k] = bit_base_table[div->seqs->buffer[rd->seqoff + k]];
+			seq1->string[k] = 0;
+			for(k=0;k<rd->seqlen2;k++) seq2->string[k] = bit_base_table[div->seqs->buffer[rd->seqoff + rd->seqlen1 + k]];
+			seq2->string[k] = 0;
 			fprintf(out, "%u\t%u\t%s\t%s\t%u\t%s\n",
-				rd->seqid, gid,
-				as_array_u8list(div->seqs) + rd->seqoff, 
-				as_array_u8list(div->seqs) + rd->seqoff + rd->seqlen1 + 1, old_gid, route);
+				rd->seqid, gid, seq1->string, seq2->string, old_gid, route);
 		}
 	}
 	fflush(out);
 	old_gid = old_gid;
+	free_string(seq1);
+	free_string(seq2);
 }
 
 Div* init_div(uint32_t k_allele, uint32_t K_allele, float min_freq){
@@ -282,10 +246,8 @@ Div* init_div(uint32_t k_allele, uint32_t K_allele, float min_freq){
 	div->cache = init_u32slist(64);
 	div->gids  = init_u32list(8);
 	div->cbs = init_cbv(12);
-	for (i = 0; i < 4; i++) {
-		div->ps1[i]  = init_u32list(32);
-		div->ps2[i]  = init_u32list(32); 
-	}
+	div->ps1 = init_u32list(32);
+	div->ps2 = init_u32list(32); 
 	return div;
 }
 
@@ -314,10 +276,8 @@ void free_div(Div *div){
 	for(i=0;i<count_u32slist(div->cache);i++){
 		free_u32list(get_u32slist(div->cache, i));
 	}
-	for (i = 0; i < 4; i++) {
-		free_u32list(div->ps1[i]);
-		free_u32list(div->ps2[i]);
-	}
+	free_u32list(div->ps1);
+	free_u32list(div->ps2);
 	free_cbv(div->cbs);
 	free_u32slist(div->cache);
 	free_u32list(div->gids);
@@ -353,13 +313,11 @@ uint32_t div_reads(Div *div, FileReader *fr, FILE *out){
 		rd  = next_ref_rilist(div->rds);
 		rd->seqid   = seqid;
 		rd->rank    = rank;
-		rd->seqoff  = count_u8list(div->seqs);
+		rd->seqoff  = div->seqs->size;
 		rd->seqlen1 = get_col_len(fr, 2);
 		rd->seqlen2 = get_col_len(fr, 3);
-		for(i=0;i<get_col_len(fr, 2);i++) push_u8list(div->seqs, seq1[i]);
-		push_u8list(div->seqs, 0);
-		for(i=0;i<get_col_len(fr, 3);i++) push_u8list(div->seqs, seq2[i]);
-		push_u8list(div->seqs, 0);
+		for(i=0;i<rd->seqlen1;i++) push_u8list(div->seqs, base_bit_table[(int)seq1[i]]);
+		for(i=0;i<rd->seqlen2;i++) push_u8list(div->seqs, base_bit_table[(int)seq2[i]]);
 		push_u32list(get_u32slist(div->grps, 0), rid);
 	}
 	if(last_gid) dividing(div, last_gid, out);
