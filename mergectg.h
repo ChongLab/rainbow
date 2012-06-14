@@ -19,12 +19,24 @@ typedef struct {
 define_list(readv, read_t);
 
 typedef struct {
+	uint64_t kmer:62, kpos:2;
+} rd_kmer_t;
+
+#define rd_kmer_code(r) u32hashcode((r).kmer)
+#define rd_kmer_eq(r1, r2) ((r1).kmer == (r2).kmer)
+define_hashset(rdkhash, rd_kmer_t, rd_kmer_code, rd_kmer_eq);
+define_list(idxv, rdkhash*);
+
+typedef struct {
 //	uint32_t id, clsid, old_clsid, sz;
 	uint32_t id;
 	int closed;
 	char *seq, *sec_seq, *path;
 	readv *rds;
-	Vector *efctgs;
+	u32list *m_rds;  // merged reads index
+	rdkhash *index;
+	idxv *m_idx;  // merged multiple index
+//	Vector *efctgs;
 } contig_t; 
 
 #define contig_code(c) u32hashcode((c).id)
@@ -72,7 +84,6 @@ define_search_array(bisearch, uint64_t, native_number_cmp);
 
 typedef struct {
 	contigv *ctgs;
-//	ctgset *ctgs;
 	pathtree_t *tree;
 	ctgkhash *index;
 	link_t *links;
@@ -83,7 +94,8 @@ typedef struct {
 	uint32_t min_kmer; // parameter: # kmers to define two similar contigs
 	uint32_t min_overlap; // parameter
 	float het; // parameter
-	uint32_t CTG_KMER_SIZE; // parameter
+	uint32_t CTG_KMER_SIZE; // parameter 
+	uint32_t RD_KMER_SIZE; // parameter
 	uint32_t min_ol; //parameter for asm
 	float min_sm; // parameter for asm
 	uint32_t min_read; // parameter for asm
@@ -118,21 +130,7 @@ static inline int cmp_ids(const void *e1, const void *e2) {
 	else
 		return -1;
 }
-//
-//static inline int cmp_ctg_clsids(const void *e1, const void *e2) {
-//	contig_t *t1, *t2;
-//	t1 = (contig_t *)e1;
-//	t2 = (contig_t *)e2;
-//
-//	if (t1->clsid == t2->clsid)
-//		return 0;
-//	else if (t1->clsid > t2->clsid)
-//		return 1;
-//	else
-//		return -1;
-//
-//}
-//
+
 #ifdef __CPLUSPLUS
 extern "C" {
 #endif

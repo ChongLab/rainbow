@@ -39,13 +39,13 @@ FContig* get_pool_ctg(EF *ef){
 	FContig* ctg;
 	ctg = NULL;
 	EF *e;
-//	if(vec_size(ef->pool_ctg)){ // czc modified here to hold all ctgs
-//		gpop_vec(ef->pool_ctg, ctg, FContig*);
-//	} else {
+	if(vec_size(ef->pool_ctg)){ // czc modified here to hold all ctgs
+		gpop_vec(ef->pool_ctg, ctg, FContig*);
+	} else {
 		ctg = malloc(sizeof(FContig));
 		ctg->rids   = init_vec(sizeof(uint32_t), 6);
 		ctg->seq    = init_string(1024);
-//	}
+	}
 	e = ef;
 	return ctg;
 }

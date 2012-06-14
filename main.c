@@ -33,7 +33,7 @@ int usage(){
 	"  -2 <string> Input fasta/fastq file, supports multiple '-2' [null]\n"
 	"  -l <int>    Read length, default: 0 variable\n"
 	//"  -r <int>    rank of input files [1]\n"
-	"  -m <int>    Maximum mismatches [2]\n"
+	"  -m <int>    Maximum mismatches [5]\n"
 	"  -e <int>    Exactly matching threshold [2000]\n"
 	" div\n"
 	"  -i <string> Input file [stdin]\n"
@@ -44,10 +44,10 @@ int usage(){
 	" merge \n"
 	"  -i <string> Input rbasm output file [stdin]\n"
 //	"  -v <string> Input rainbow divided file [stdin]\n"
-	"  -p <float>  maximum heterozygosity to collapse, should be specifed according to the estimated\n"
-	"              polymorphism of the species [0.02]\n"
-	"  -l <int>    Minimum overlap to collapse two contigs [100]\n"
-	"  -k <int>    Minimum number of kmers to define similarity between two contigs [5]\n"
+//	"  -p <float>  maximum heterozygosity to collapse, should be specifed according to the estimated\n"
+//	"              polymorphism of the species [0.02]\n"
+//	"  -l <int>    Minimum overlap to collapse two contigs [100]\n"
+//	"  -k <int>    Minimum number of kmers to define similarity between two contigs [5]\n"
 	"  -o <string> Output file for merged contigs, one line per cluster [stdout]\n" 
 //	"  -n <int>    Maximum number of contigs to execute pairwise alignment [50]\n"
 	"\n",
@@ -67,7 +67,7 @@ int cluster_invoker(int argc, char **argv){
 	int rank = 1;
 	fr2 = NULL;
 	infile = NULL;
-	max_mm = 2;
+	max_mm = 5;
 	exact_limit = 2000;
 	fix_rd_len = 0;
 	list1 = init_namelist(2);
