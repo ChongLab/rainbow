@@ -322,7 +322,7 @@ void merge_ctgs(merge_t *merger, FileReader *in, FILE *out) {
 					merger->sim_pairs = 0;
 					merge_along_tree(merger, merger->tree); 
 				} while (merger->sim_pairs);
-				if (merger->ctgs->size>=4){ 
+				if (merger->ctgs->size>=3){ 
 //				if (merger->ctgs->size>=4 && merger->ctgs->size<=200){ 
 //					index_ctgs(merger);
 					merge_core(merger);
@@ -346,7 +346,7 @@ void merge_ctgs(merge_t *merger, FileReader *in, FILE *out) {
 			merger->sim_pairs = 0;
 			merge_along_tree(merger, merger->tree);
 		} while (merger->sim_pairs);
-		if (merger->ctgs->size>=4){ 
+		if (merger->ctgs->size>=3){ 
 //		if (merger->ctgs->size>=4 && merger->ctgs->size<=200){ 
 //			index_ctgs(merger);
 			merge_core(merger);
