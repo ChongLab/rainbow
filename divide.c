@@ -36,6 +36,43 @@ static inline uint32_t C_N_2(uint32_t n){
 	if(n == 0) return 0;
 	else return n * (n - 1) / 2;
 }
+uint32_t _call_key_col(Div *div, uint32_t gid){
+	ReadInfo *rd;
+	u32list *grp;
+	uint32_t i, j, col, row, key, c, max_non, tol, base;
+	BaseCnt cnts[4];
+	key = div->n_col;
+	base = 0;
+	grp = get_u32slist(div->grps, gid);
+	max_non = 0;
+	for(col=0;col<div->n_col;col++){
+		for(i=0;i<4;i++){ cnts[i].base = i; cnts[i].cnt = 0; }
+		for(row=0;row<count_u32list(grp);row++){
+			rd = ref_rilist(div->rds, get_u32list(grp, row));
+			if(rd->seqlen1 <= col) continue;
+			c  = base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + col)];
+			cnts[c&0x03].cnt ++;
+		}
+		tol = cnts[0].cnt + cnts[1].cnt + cnts[2].cnt + cnts[3].cnt;
+		if(tol == 0) break;
+		for(i=0;i<2;i++){
+			for(j=3;j>i;j--){
+				if(cnts[j].cnt > cnts[j-1].cnt){
+					swap_tmp(cnts[j].cnt, cnts[j-1].cnt, c);
+					swap_tmp(cnts[j].base, cnts[j-1].base, c);
+				}
+			}
+		}
+		if(cnts[1].cnt < div->k_allele) continue;
+		if(cnts[1].cnt < div->K_allele && cnts[1].cnt < div->min_freq * tol) continue;
+		if(cnts[1].cnt > max_non){
+			max_non = cnts[1].cnt;
+			key = col;
+			base = cnts[1].base;
+		}
+	}
+	return (key << 2) | base;
+}
 
 uint32_t call_key_col(Div *div, uint32_t gid){
 	ReadInfo *rd;
@@ -160,19 +197,29 @@ void dividing_core(Div *div, uint32_t gid, int dep){
 	}
 	str[i] = '\0';
 	fprintf(stderr, "%s\t%d\t%c\n", str, col, "ACGT"[b]);
+	for (j = 0; j < 4; j++) {
+		push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
+		push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
+	}
+	if (dep <= 255) {
+		set_u64list(div->markers[dep/64], gid+1, get_u64list(div->markers[j], gid) | (1LLU << (dep%64)));
+	}
 	*/
-	for (j = 0; (int)j < dep/64; j++) {
-		push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
-		push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
-	}
-		push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
-		push_u64list(div->markers[j], get_u64list(div->markers[j], gid) | (1LLU << (dep%64)));
-	j++;
-	for (; j < 4; j++) {
-		push_u64list(div->markers[j], 0);
-		push_u64list(div->markers[j], 0);
-	}
 	
+	if (dep <= 255) {
+		for (j = 0; (int)j < dep/64; j++) {
+			push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
+			push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
+		}
+			push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
+			push_u64list(div->markers[j], get_u64list(div->markers[j], gid) | (1LLU << (dep%64)));
+		j++;
+		for (; j < 4; j++) {
+			push_u64list(div->markers[j], 0);
+			push_u64list(div->markers[j], 0);
+		}
+	}
+
 	for(i=0;i<count_u32list(grp);i++){
 		rid = get_u32list(grp, i);
 		rd = ref_rilist(div->rds, rid);
@@ -204,6 +251,7 @@ void dividing(Div *div, uint32_t old_gid, FILE *out){
 	for(i=0;i<count_u32list(div->gids);i++){
 		grp = get_u32slist(div->grps, get_u32list(div->gids, i));
 		dep = get_u32list(div->deps, i);
+		if (dep>255) dep = 255;
 //		marker1 = get_u64list(div->markers1, get_u32list(div->gids, i));
 //		marker2 = get_u64list(div->markers2, get_u32list(div->gids, i));
 		for(j=0;j<dep;j++){
