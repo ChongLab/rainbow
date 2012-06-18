@@ -173,12 +173,12 @@ uint32_t call_key_col(Div *div, uint32_t gid){
 void dividing_core(Div *div, uint32_t gid, int dep){
 	ReadInfo *rd;
 	u32list *grp, *sub;
-	uint64_t mark0;
+//	uint64_t mark0;
 	uint32_t i, j, col, rid, gids[2], b;
 	col = call_key_col(div, gid);
 	b = col & 0x03;
 	col >>= 2;
-	if(col >= div->n_col){
+	if(col >= div->n_col || div->rds->size < div->K_allele){
 		push_u32list(div->gids, gid);
 		push_u32list(div->deps, dep);
 		return;
