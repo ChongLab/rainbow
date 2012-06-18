@@ -8,6 +8,7 @@
 #include "string.h"
 #include "stdaln.h"
 #include "asm_R2.h"
+#include "bloom_filter.h"
 
 typedef struct {
 	char seq[MAX_RD_LEN+1];
@@ -26,6 +27,7 @@ typedef struct {
 #define rd_kmer_eq(r1, r2) ((r1).kmer == (r2).kmer)
 define_hashset(rdkhash, rd_kmer_t, rd_kmer_code, rd_kmer_eq);
 define_list(idxv, rdkhash*);
+//define_list(idxv, BloomFilter*);
 
 typedef struct {
 //	uint32_t id, clsid, old_clsid, sz;
@@ -35,6 +37,7 @@ typedef struct {
 	readv *rds;
 	u32list *m_rds;  // merged reads index
 	rdkhash *index;
+//	BloomFilter *index;
 	idxv *m_idx;  // merged multiple index
 //	Vector *efctgs;
 } contig_t; 

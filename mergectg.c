@@ -244,7 +244,7 @@ static void show(pathtree_t *tree, int h) {
 
 void merge_leaves(merge_t *merger, uint32_t id1, uint32_t id2) {
 	char *prefix;
-	uint32_t i; int n;
+	uint32_t i; int n, n1, n2;
 	contig_t *c1, *c2, *c;
 	
 	c1 = ref_contigv(merger->ctgs, id1);
@@ -256,7 +256,9 @@ void merge_leaves(merge_t *merger, uint32_t id1, uint32_t id2) {
 	} else {
 		c1->closed = 1;
 	}
-	n = strlen(c1->path)>=strlen(c2->path)?strlen(c2->path):strlen(c1->path);
+	n1 = strlen(c1->path);
+	n2 = strlen(c2->path);
+	n = n1>=n2?n1:n2;
 	prefix = (char*)malloc(sizeof(char)*(n+1));
 	memset(prefix, 0, n+1);
 	prefix_path(c1->path, c2->path, n, prefix);
@@ -514,7 +516,13 @@ int is_similar_enough(merge_t *merger, contig_t *c1, contig_t *c2) {
 			if (len < merger->RD_KMER_SIZE) continue;
 			for (j = 0; j < merger->RD_KMER_SIZE-1; j++)
 				K.kmer = (K.kmer << 2) | base_bit_table[(int)rd->seq[j]];
-			for (j = 0; j <= (unsigned)len-merger->RD_KMER_SIZE; j++) {
+			for (j = 0; j <= (unsigned)len-merger->RD_KMER_SIZE-3; j++) {
+				K.kmer = ((K.kmer << 2) | base_bit_table[(int)rd->seq[j+merger->RD_KMER_SIZE-1]]) & kmask;
+				j++;
+				K.kmer = ((K.kmer << 2) | base_bit_table[(int)rd->seq[j+merger->RD_KMER_SIZE-1]]) & kmask;
+				j++;
+				K.kmer = ((K.kmer << 2) | base_bit_table[(int)rd->seq[j+merger->RD_KMER_SIZE-1]]) & kmask;
+				j++;
 				K.kmer = ((K.kmer << 2) | base_bit_table[(int)rd->seq[j+merger->RD_KMER_SIZE-1]]) & kmask;
 				for (k = 0; k < cdb->m_idx->size; k++) {
 					t = get_rdkhash(get_idxv(cdb->m_idx, k), K);
