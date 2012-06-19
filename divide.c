@@ -50,7 +50,8 @@ uint32_t _call_key_col(Div *div, uint32_t gid){
 		for(row=0;row<count_u32list(grp);row++){
 			rd = ref_rilist(div->rds, get_u32list(grp, row));
 			if(rd->seqlen1 <= col) continue;
-			c  = base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + col)];
+//			c  = base_bit_table[(int)get_u8list(div->seqs, rd->seqoff + col)];
+			c = div->seqs->buffer[rd->seqoff + col];
 			cnts[c&0x03].cnt ++;
 		}
 		tol = cnts[0].cnt + cnts[1].cnt + cnts[2].cnt + cnts[3].cnt;
