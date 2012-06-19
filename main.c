@@ -195,14 +195,6 @@ int merge_invoker(int argc, char **argv) {
 			default: return usage();
 		}
 	}
-/*
-	if (asmdf) {
-		if ((asmd = fopen_filereader(asmdf)) == NULL) {
-			fprintf(stdout, " -- Cannot open %s in %s -- %s:%d --\n", asmdf, __FUNCTION__, __FILE__, __LINE__);
-			abort();
-		}
-	} else asmd = stdin_filereader();
-*/
 	if (divdf) {
 		if ((divd = fopen_filereader(divdf)) == NULL) {
 			fprintf(stdout, " -- Cannot open %s in %s -- %s:%d --\n", divdf, __FUNCTION__, __FILE__, __LINE__);
@@ -217,10 +209,8 @@ int merge_invoker(int argc, char **argv) {
 	} else out = stdout;
 	merge_t *merger;
 	merger = init_merger(min_kmer, min_overlap, het, kmersize);
-//	merge_ctgs(merger, asmd, divd, out);
 	merge_ctgs(merger, divd, out);
 	free_merger(merger);
-//	fclose_filereader(asmd);
 	fclose_filereader(divd);
 	if (outfile) fclose(out);
 	return 0;
