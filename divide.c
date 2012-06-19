@@ -178,7 +178,7 @@ void dividing_core(Div *div, uint32_t gid, int dep){
 	col = call_key_col(div, gid);
 	b = col & 0x03;
 	col >>= 2;
-	if(col >= div->n_col || div->rds->size < div->K_allele){
+	if(col >= div->n_col || div->rds->size < div->K_allele || dep > 255){
 		push_u32list(div->gids, gid);
 		push_u32list(div->deps, dep);
 		return;
@@ -206,19 +206,19 @@ void dividing_core(Div *div, uint32_t gid, int dep){
 	}
 	*/
 	
-	if (dep <= 255) {
-		for (j = 0; (int)j < dep/64; j++) {
-			push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
-			push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
-		}
-			push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
-			push_u64list(div->markers[j], get_u64list(div->markers[j], gid) | (1LLU << (dep%64)));
-		j++;
-		for (; j < 4; j++) {
-			push_u64list(div->markers[j], 0);
-			push_u64list(div->markers[j], 0);
-		}
+//	if (dep <= 255) {
+	for (j = 0; (int)j < dep/64; j++) {
+		push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
+		push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
 	}
+		push_u64list(div->markers[j], get_u64list(div->markers[j], gid));
+		push_u64list(div->markers[j], get_u64list(div->markers[j], gid) | (1LLU << (dep%64)));
+	j++;
+	for (; j < 4; j++) {
+		push_u64list(div->markers[j], 0);
+		push_u64list(div->markers[j], 0);
+	}
+//	}
 
 	for(i=0;i<count_u32list(grp);i++){
 		rid = get_u32list(grp, i);
@@ -230,7 +230,8 @@ void dividing_core(Div *div, uint32_t gid, int dep){
 		}
 	}
 	for(i=0;i<2;i++){
-		if(count_u32list(get_u32slist(div->grps, gids[i])) > 2 * div->k_allele) dividing_core(div, gids[i], dep + 1);
+//		if(count_u32list(get_u32slist(div->grps, gids[i])) > 2 * div->k_allele) dividing_core(div, gids[i], dep + 1);
+		dividing_core(div, gids[i], dep + 1);
 	}
 }
 
