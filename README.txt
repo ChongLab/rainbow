@@ -1,4 +1,4 @@
-Rainbow v1.0.1
+Rainbow v2.0
 
 Description
 ===========
@@ -17,10 +17,8 @@ Usage of Rainbow package
 EXAMPLE: a typical use of Rainbow step by step
 
 	rainbow cluster -1 1.fq  -2 2.fq > rbcluster.out 2> log
-	rainbow div -i rbcluster.out > rbdiv.out
-	rbasm -i rbdiv.out -o rbasm.out
-	rainbow merge -a rbasm.out -v rbdiv.out -p 0.002 > merged.txt ## [-p] is the estimated heterogosity
-	rerun_rbasm.pl merged.txt rbdiv.out rbasm.out # the output file 'final_asm.fa' contains the final contigs
+	rainbow div -i rbcluster.out -o rbdiv.out
+	rainbow merge -o rbasm.out -a -i rbdiv.out -N500
 
 ----------------------------------------------------------------------------------
 rainbow 1.1 -- <ruanjue@gmail.com, chongzechen@gmail.com>
@@ -30,22 +28,22 @@ Output File Format: <seqid:int>\t<cluster_id:int>\t<read1:string>\t<read2:string
 
  cluster
   -1 <string> Input fasta/fastq file, supports multiple '-1'
-  -2 <string> Input fasta/fasta file, supports multiple '-2' [null]
+  -2 <string> Input fasta/fastq file, supports multiple '-2' [null]
   -l <int>    Read length, default: 0 variable
-  -m <int>    Maximum mismatches [2]
+  -m <int>    Maximum mismatches [4]
   -e <int>    Exactly matching threshold [2000]
+  -L          Low level of polymorphism
  div
   -i <string> Input file [stdin]
+  -o <string> Output file [stdout]
   -k <int>    K_allele, min variants to create a new group [2]
   -K <int>    K_allele, divide regardless of frequency when num of variants exceed this value [50]
   -f <float>  Frequency, min variant frequency to create a new group [0.2]
- merge  ***this procedure should be run after rbasm***
-  -a <string> Input rbasm output file [stdin]
-  -v <string> Input rainbow divided file [stdin]
-  -p <float>  maximum heterozygosity to collapse, should be specifed according to the estimated
-              polymorphism of the species [0.01]
-  -l <int>    Minimum overlap to collapse two contigs [100]
-  -n <int>    Maximum number of contigs to execute pairwise alignment [50]
+ merge
+  -i <string> Input rbasm output file [stdin]
+  -a          output assembly or not [not]
+  -o <string> Output file for merged contigs, one line per cluster [stdout]
+  -N <int>    Maximum number of divided clusters to merge [300]
 
 ----------------------------------------------------------------------------------
 rbasm: a greedy assembler to locally assemble each cluster produced by rainbow
