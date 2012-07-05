@@ -30,17 +30,20 @@
 #include "dna.h"
 #include "file_reader.h"
 #include "string.h"
-#include "mergecontig.h"
+//#include "mergecontig.h"
+#include "mergectg.h"
 
-#define KMER_SIZE	8
-#define KMER_NUM	4
+
+//static uint32_t KMER_SIZE = 15;
+//static uint32_t KMER_NUM = 6;
+//#define KMER_NUM	6
 
 typedef struct {
-	uint64_t kmer:32, seqid:32;
+	uint32_t kmer1, kmer2, seqid;
 } kmer_t;
 
-#define kmer_hashcode(k) u32hashcode((k).kmer)
-#define kmer_equals(k1, k2) ((k1).kmer == (k2).kmer)
+#define kmer_hashcode(k) u64hashcode((((uint64_t)(k).kmer1) << 32) | (k).kmer2)
+#define kmer_equals(k1, k2) (((k1).kmer1 == (k2).kmer1) && ((k1).kmer2 == (k2).kmer2))
 define_hashset(khash, kmer_t, kmer_hashcode, kmer_equals);
 
 typedef struct {
@@ -68,6 +71,8 @@ typedef struct {
 	uint32_t max_mm;
 	uint32_t exact_limit;
 	uint32_t idxs[2];
+	uint32_t KMER_SIZE;
+	uint32_t KMER_NUM;
 	khash *index;
 	u32list *links;
 	BitVec  *flags;
@@ -78,7 +83,7 @@ typedef struct {
 	sbtv    *sbts;
 } Cluster;
 
-Cluster* init_cluster(uint32_t max_mm, uint32_t exact_limit);
+Cluster* init_cluster(uint32_t max_mm, uint32_t exact_limit, uint32_t KMER_SIZE, uint32_t KMER_NUM);
 void indexing_cluster(Cluster *cluster, FileReader *fr1, int is_fq, int fix_rd_len);
 void clustering(Cluster *cluster, FileReader *fr2, int is_fq, int fix_rd_len, FILE *out);
 void free_cluster(Cluster *cluster);
@@ -92,13 +97,22 @@ define_list(rilist, ReadInfo);
 define_list(u32slist, u32list*);
 
 typedef struct {
+	uint32_t col, cnt, base;
+} col_base_t;
+
+define_list(cbv, col_base_t);
+
+typedef struct {
 	uint32_t gidoff;
 	rilist *rds;
 	u8list *seqs;
 	u32slist *grps, *cache;
-	u64list *markers;
+	u64list *markers[4];
 	u32list *deps;
 	u32list *gids;
+	cbv *cbs;
+	u32list *ps1;
+	u32list *ps2;
 	uint32_t n_col;
 	uint32_t k_allele, K_allele;
 	float min_freq;

@@ -323,6 +323,14 @@ PWDB* pw_aln_contigs(CtgDB *db, uint32_t min_overlap, float het) {
 		idx = bisearch(idv, n,  p, NULL);
 		if (idx < 0) idx = -1 - idx;
 		//printf("idx %d\n", idx);
+		if (p <= idv[idx]) {
+			if (idx > (int)i) {
+				ID = next_ref_idlist(idtmp);
+				ID->id = idx;
+				ID->offset = q;
+				ID->lastoffset = r;
+			}
+		} 
 		for (j = 1; j < count_posv(posvec); j++) {
 			if ((get_posv(posvec, j)).pos - p >= KMER_SIZE_CTG) {
 				p = (get_posv(posvec, j)).pos; 

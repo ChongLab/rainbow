@@ -17,60 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
-#include "string.h"
-#include "vector.h"
-#include "hashset.h"
-#include "file_reader.h"
-#include "dna.h"
-#include <stdint.h>
-#include <unistd.h>
-
-#define MAX_RD_LEN	255
-#define KMER_SIZE	5
-#define KMER_MASK	0x3FFu
-
-typedef struct { uint32_t rid:16, roff:16; } rp_t;
-
-typedef struct {
-	uint32_t kmer:10, rps_idx:22;
-} rhash_t;
-
-#define rhash_code(r) (r).kmer
-#define rhash_eq(r1, r2) ((r1).kmer == (r2).kmer)
-define_hashset(rhash, rhash_t, rhash_code, rhash_eq);
-
-typedef struct {
-	char     seq[MAX_RD_LEN+1];
-	uint32_t seq_id;
-	uint32_t rd_len:10, rank:10;
-	uint32_t ctg_id:24, ctg_off:19, used:1;
-} FRead;
-
-typedef struct {
-	uint32_t len:31, closed:1;
-	String   *seq;
-	Vector   *rids;
-} FContig;
-
-typedef struct {
-	uint32_t l_rid:20, r_rid:20, l_ol:8, r_ol:8, n_mm:7, used:1;
-} Overlap;
-
-typedef struct {
-	uint32_t ef_id;
-	char     eseq[MAX_RD_LEN];
-	Vector   *rds;
-	Vector   *ctgs;
-	Vector   *rps;
-	Vector   *ols;
-	rhash    *index;
-	u64hash  *uniq;
-	uint32_t min_ol;
-	float    min_sm;
-
-	Vector   *pool_vec;
-	Vector   *pool_ctg;
-} EF;
+#include "asm_R2.h"
 
 Vector* get_pool_vec(EF *ef){
 	Vector *vec;
@@ -91,14 +38,25 @@ void put_pool_vec(EF *ef, Vector *vec){
 FContig* get_pool_ctg(EF *ef){
 	FContig* ctg;
 	ctg = NULL;
-	if(vec_size(ef->pool_ctg)){
+	EF *e;
+	if(vec_size(ef->pool_ctg)){ // czc modified here to hold all ctgs
 		gpop_vec(ef->pool_ctg, ctg, FContig*);
 	} else {
 		ctg = malloc(sizeof(FContig));
 		ctg->rids   = init_vec(sizeof(uint32_t), 6);
 		ctg->seq    = init_string(1024);
 	}
+	e = ef;
 	return ctg;
+}
+
+int cmp_ol_func(const void *e1, const void *e2){
+	Overlap *o1, *o2;
+	o1 = (Overlap*)e1;
+	o2 = (Overlap*)e2;
+	if(o1->l_ol < o2->l_ol) return 1;
+	else if(o1->l_ol > o2->l_ol) return -1;
+	else return 0;
 }
 
 void put_pool_ctg(EF *ef, FContig *ctg){
@@ -137,8 +95,8 @@ void add_read2ef_core(EF *ef, char *seq, uint32_t seq_id, uint32_t rd_len, uint3
 	kmer = 0;
 	RH.rps_idx = 0;
 	for(i=0;i<rd_len;i++){
-		kmer = (((kmer << 2) | base_bit_table[(int)rd->seq[i]])) & KMER_MASK;
-		if(i + 1 < KMER_SIZE) continue;
+		kmer = (((kmer << 2) | base_bit_table[(int)rd->seq[i]])) & ASM_KMER_MASK;
+		if(i + 1 < ASM_KMER_SIZE) continue;
 		RH.kmer = kmer;
 		rh = prepare_rhash(ef->index, RH, &exists);
 		if(exists){
@@ -161,6 +119,7 @@ EF* init_ef(uint32_t ef_id, char *eseq, uint32_t rd_len, uint32_t min_ol, float 
 	ef->ef_id  = ef_id;
 	ef->min_ol = min_ol;
 	ef->min_sm = min_sm;
+	ef->inc_tag = 1;
 	ef->rds    = init_vec(sizeof(FRead), 64);
 	ef->ols    = init_vec(sizeof(Overlap), 64);
 	ef->rps    = init_vec(sizeof(Vector*), 64);
@@ -175,16 +134,12 @@ EF* init_ef(uint32_t ef_id, char *eseq, uint32_t rd_len, uint32_t min_ol, float 
 	return ef;
 }
 
+void set_inc_tag_ef(EF *ef, uint32_t inc){
+	ef->inc_tag = inc;
+}
+
 void add_read2ef(EF *ef, char *seq, uint32_t seq_id, uint32_t rd_len, uint32_t rank){ add_read2ef_core(ef, seq, seq_id, rd_len, (rank == 0)? 1 : rank); }
 
-int cmp_ol_func(const void *e1, const void *e2){
-	Overlap *o1, *o2;
-	o1 = (Overlap*)e1;
-	o2 = (Overlap*)e2;
-	if(o1->l_ol < o2->l_ol) return 1;
-	else if(o1->l_ol > o2->l_ol) return -1;
-	else return 0;
-}
 
 void find_overlap(char *seq1, uint32_t len1, uint32_t off1, char *seq2, uint32_t len2, uint32_t off2, uint32_t *l_ol, uint32_t *r_ol, uint32_t *n_mm){
 	uint32_t i, l, r, ol, mm;
@@ -276,6 +231,7 @@ void asm_ef_ctgs(EF *ef){
 		for(i=0;i<vec_size(ef->ols);i++){
 			ol = get_vec_ref(ef->ols, i);
 			if(ol->used) continue;
+			if(ef->inc_tag == 0 && (ol->l_rid == 0 || ol->r_rid == 0)) continue;
 			rd1 = get_vec_ref(ef->rds, ol->l_rid);
 			rd2 = get_vec_ref(ef->rds, ol->r_rid);
 			if(rank_type == 0){
@@ -309,7 +265,8 @@ void asm_ef_ctgs(EF *ef){
 					ctg1->len = offset + ctg2->len;
 				}
 			} else {
-				continue;
+				// ABCDEG
+				//continue;
 				ctg1->closed = 1;
 				offset = off2 - off1;
 				for(j=0;j<vec_size(ctg1->rids);j++){
@@ -385,10 +342,12 @@ void free_ef(EF *ef){
 		ctg = gget_vec(ef->pool_ctg, i, FContig*);
 		free_vec(ctg->rids);
 		free_string(ctg->seq);
+		free(ctg);
 	}
 	free_vec(ef->pool_vec);
 	free_vec(ef->pool_ctg);
 	free(ef);
+	ef = NULL;
 }
 
 uint32_t asm_ef(FileReader *in, FILE *out, uint32_t min_ol, float min_sm, uint32_t min_read, uint32_t max_read){
@@ -447,44 +406,4 @@ int ef_usage(){
 "\n"
 	);
 	return 1;
-}
-
-int main(int argc, char **argv){
-	FileReader *in;
-	FILE *out;
-	uint32_t n_ef, min_ol, min_read, max_read;
-	float min_sm;
-	char *infile, *outfile;
-	int c;
-	infile = NULL;
-	outfile = NULL;
-	min_ol = 5;
-	min_sm = 0.9;
-	min_read = 5;
-	max_read = 200;
-	while((c = getopt(argc, argv, "hi:o:r:R:l:s:")) != -1){
-		switch(c){
-			case 'i': infile = optarg; break;
-			case 'o': outfile = optarg; break;
-			case 'l': min_ol = atoi(optarg); break;
-			case 's': min_sm = atof(optarg); break;
-			case 'r': min_read = atoi(optarg); break;
-			case 'R': max_read = atoi(optarg); break;
-			case 'h': return ef_usage();
-		}
-	}
-	if(infile == NULL) in = stdin_filereader();
-	else if((in = fopen_filereader(infile)) == NULL){
-		fprintf(stderr, " -- Cannot open %s in %s -- %s:%d --\n", infile, __FUNCTION__, __FILE__, __LINE__);
-		abort();
-	}
-	if(outfile == NULL) out = stdout;
-	else if((out = fopen(outfile, "w")) == NULL){
-		fprintf(stderr, " -- Cannot write %s in %s -- %s:%d --\n", outfile, __FUNCTION__, __FILE__, __LINE__);
-		abort();
-	}
-	n_ef = asm_ef(in, out, min_ol, min_sm, min_read, max_read);
-	fclose_filereader(in);
-	if(outfile) fclose(out);
-	return 0;
 }

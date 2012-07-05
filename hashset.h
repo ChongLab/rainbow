@@ -26,6 +26,29 @@
 #include <stdint.h>
 #include <math.h>
 
+static const uint64_t sys_prime_list[61] = {
+	0x7LLU, 0xfLLU, 0x1fLLU, 0x43LLU, 0x89LLU,
+	0x115LLU, 0x22dLLU, 0x45dLLU, 0x8bdLLU, 0x1181LLU,
+	0x2303LLU, 0x4609LLU, 0x8c17LLU, 0x1183dLLU, 0x2307bLLU,
+	0x460fdLLU, 0x8c201LLU, 0x118411LLU, 0x230833LLU, 0x461069LLU,
+	0x8c20e1LLU, 0x11841cbLLU, 0x2308397LLU, 0x461075bLLU, 0x8c20ecbLLU,
+	0x11841da5LLU, 0x23083b61LLU, 0x461076c7LLU, 0x8c20ed91LLU, 0x11841db31LLU,
+	0x23083b673LLU, 0x461076d1bLLU, 0x8c20eda41LLU, 0x11841db48dLLU, 0x23083b6937LLU,
+	0x461076d27fLLU, 0x8c20eda50dLLU, 0x11841db4a59LLU, 0x23083b694ebLLU, 0x461076d29f1LLU,
+	0x8c20eda5441LLU, 0x11841db4a887LLU, 0x23083b69511fLLU, 0x461076d2a2c1LLU, 0x8c20eda54591LLU,
+	0x11841db4a8b55LLU, 0x23083b69516c1LLU, 0x461076d2a2da5LLU, 0x8c20eda545b55LLU, 0x11841db4a8b6b5LLU,
+	0x23083b69516d91LLU, 0x461076d2a2db3bLLU, 0x8c20eda545b69dLLU, 0x11841db4a8b6d5dLLU, 0x23083b69516daf5LLU,
+	0x461076d2a2db5edLLU, 0x8c20eda545b6c5fLLU, 0x11841db4a8b6d8ebLLU, 0x23083b69516db1ffLLU, 0x461076d2a2db643fLLU,
+	0x8c20eda545b6c8f3LLU
+};
+
+static inline uint64_t _rj_hashset_find_prime(uint64_t n){
+	uint32_t i;
+	i = 0;
+	while(i < 60 && n > sys_prime_list[i]) i ++;
+	return sys_prime_list[i];
+}
+
 #ifndef HASH_FLAG_MACROS
 #define HASH_FLAG_MACROS
 #define is_entity_null(flags, idx)    ((flags)[(idx)>>4]>>(((idx)&0x0f)<<1)&0x01)
@@ -39,15 +62,15 @@
 
 #define init_hashset_macro(hash_type, hash_key_type) \
 typedef struct { hash_key_type *array;  uint32_t *flags; size_t e_size; size_t ocp; size_t size; size_t count; size_t max; float load_factor; size_t iter_ptr; } hash_type; \
-static inline int hash_type##_is_prime(size_t num){                            \
-	size_t i, max;                                                             \
+static inline int hash_type##_is_prime(uint64_t num){                          \
+	uint64_t i, max;                                                           \
 	if(num < 4) return 1;                                                      \
 	if(num % 2 == 0) return 0;                                                 \
-	max = (size_t)sqrt((float)num);                                            \
+	max = (uint64_t)sqrt((double)num);                                         \
 	for(i=3;i<max;i+=2){ if(num % i == 0) return 0; }                          \
 	return 1;                                                                  \
 }                                                                              \
-static inline size_t hash_type##_find_next_prime(size_t num){                  \
+static inline uint64_t hash_type##_find_next_prime(uint64_t num){              \
 	if(num % 2 == 0) num ++;                                                   \
 	while(1){ if(hash_type##_is_prime(num)) return num; num += 2; }            \
 }                                                                              \
@@ -55,7 +78,7 @@ static inline hash_type* init2_##hash_type(uint32_t size, float factor){       \
 	hash_type *set;                                                            \
 	set = (hash_type*)malloc(sizeof(hash_type));                               \
 	set->e_size = sizeof(hash_key_type);                                       \
-	set->size   = size;                                                        \
+	set->size   = _rj_hashset_find_prime(size);                                \
 	set->count  = 0;                                                           \
 	set->ocp    = 0;                                                           \
 	set->load_factor = factor;                                                 \
@@ -71,20 +94,24 @@ static inline hash_type* init_##hash_type(uint32_t size){ return init2_##hash_ty
 #define get_hashset_macro(hash_type, hash_key_type, hash_code_macro, hash_equal_macro) \
 static inline hash_key_type* get_##hash_type(hash_type *set, hash_key_type key){\
 	hash_key_type *e;                                                          \
+	uint32_t flag;                                                             \
 	size_t hc;                                                                 \
 	hc = hash_code_macro(key) % set->size;                                     \
 	while(1){                                                                  \
-		if(is_entity_null(set->flags, hc)){                                    \
+		flag = (set->flags[hc >> 4] >> (((hc) & 0x0f) << 1)) & 0x03;           \
+		if(flag & 0x01){                                                       \
 			return NULL;                                                       \
-		} else if(is_entity_del(set->flags, hc)){                              \
+		} else if(flag & 0x02){                                                \
 		} else {                                                               \
 			e = ((hash_key_type*)set->array) + hc;                             \
 			if(hash_equal_macro(*e, key)) return e;                            \
 		}                                                                      \
-		hc ++;                                                                 \
-		hc %= set->size;                                                       \
+		if(hc + 1 == set->size) hc = 0; else hc ++;                            \
 	}                                                                          \
 	return NULL;                                                               \
+}                                                                              \
+static inline size_t offset_##hash_type(hash_type *set, hash_key_type *ptr){   \
+	return ptr - set->array;                                                   \
 }
 
 #define prepare_hashset_macro(hash_type, hash_key_type, hash_code_macro, hash_equal_macro) \
@@ -182,6 +209,7 @@ static inline hash_key_type* put_##hash_type(hash_type *set, hash_key_type key){
 }
 
 #define remove_hashset_macro(hash_type, hash_key_type, hash_code_macro, hash_equal_macro) \
+static inline void delete_##hash_type(hash_type *set, hash_key_type *key){ set_entity_del(set->flags, key - set->array); set->count --; }   \
 static inline int remove_##hash_type(hash_type *set, hash_key_type key){       \
 	hash_key_type *e;                                                          \
 	size_t hc;                                                                 \
@@ -232,26 +260,11 @@ static inline hash_key_type* ref_iter_##hash_type(hash_type *set){             \
 	return NULL;                                                               \
 }
 
-#define iter_remove_hashset_macro(hash_type, hash_key_type) \
-static inline int iter_remove_##hash_type(hash_type *set, hash_key_type* ret){ \
-	if(set->iter_ptr >= set->size) return 0;                                   \
-	while(set->iter_ptr < set->size){                                          \
-		if(exists_entity(set->flags, set->iter_ptr)){                          \
-			set_entity_del(set->flags, set->iter_ptr);                         \
-			*ret = *(((hash_key_type*)set->array) + set->iter_ptr);            \
-			set->iter_ptr ++;                                                  \
-			set->count --;                                                     \
-			return 1;                                                          \
-		}                                                                      \
-		set->iter_ptr ++;                                                      \
-	}                                                                          \
-	return 0;                                                                  \
-}
-
 #define count_hashset_macro(hash_type) static inline int64_t count_##hash_type(hash_type *set){ return set->count; }
 
 #define clear_hashset_macro(hash_type) \
 static inline void clear_##hash_type(hash_type *set){                          \
+	if(set->ocp == 0) return;                                                  \
 	memset(set->flags, 0x55, (set->size + 15) / 16 * 4);                       \
 	set->count = 0;                                                            \
 	set->ocp   = 0;                                                            \
@@ -267,22 +280,13 @@ static inline size_t sizeof_##hash_type(hash_type *set){                       \
 				+ sizeof(uint32_t) * ((set->size + 15) / 16);                  \
 }                                                                              \
 static inline size_t dump_##hash_type(hash_type *set, FILE *out){              \
-	size_t len, i, n;                                                          \
+	size_t n;                                                          \
 	n =  ffwrite(&set->e_size, sizeof(size_t), 1, out);                        \
 	n += ffwrite(&set->size, sizeof(size_t), 1, out);                          \
 	n += ffwrite(&set->count, sizeof(size_t), 1, out);                         \
 	n += ffwrite(&set->load_factor, sizeof(float), 1, out);                    \
-	for(i=0;i<set->size;i+=1024){                                              \
-		len = set->size - i;                                                   \
-		if(len > 1024) len = 1024;                                             \
-		n += ffwrite(set->array + i * set->e_size, set->e_size, len, out);     \
-	}                                                                          \
-	for(i=0;i<(set->size+15)/16;i+=1024){                                      \
-		len = (set->size + 15) / 16 - i;                                       \
-		if(len > 1024) len = 1024;                                             \
-		n += ffwrite(set->flags + i, sizeof(uint32_t), len, out);              \
-	}                                                                          \
-	fflush(out);                                                               \
+	n += ffwrite(set->array, set->e_size, set->size, out);	\
+	n += ffwrite(set->flags, sizeof(uint32_t), (set->size + 15) / 16, out);	\
 	return n;                                                                  \
 }
 
@@ -318,7 +322,7 @@ static inline void encap_##hash_type(hash_type *set, size_t num){             \
 	hash_key_type tmp;                                                        \
 	if(set->ocp + num <= set->max) return;                                  \
 	n = set->size;                                                            \
-	do{ n = hash_type##_find_next_prime(n * 2); } while(n * set->load_factor < set->count + num);    \
+	do{ n = _rj_hashset_find_prime(n * 2); } while(n * set->load_factor < set->count + num);    \
 	set->array = realloc(set->array, n * set->e_size);                        \
 	if(set->array == NULL){                                                   \
 		fprintf(stderr, "-- Out of memory --\n");                             \
@@ -374,7 +378,6 @@ static inline void encap_##hash_type(hash_type *set, size_t num){             \
 	remove_hashset_macro(hash_type, hash_key_type, hash_code_macro, hash_equal_macro); \
 	iter_hashset_macro(hash_type, hash_key_type);                              \
 	ref_iter_hashset_macro(hash_type, hash_key_type);                          \
-	iter_remove_hashset_macro(hash_type, hash_key_type);                       \
 	reset_iter_hashset_macro(hash_type);                                       \
 	count_hashset_macro(hash_type);                                            \
 	clear_hashset_macro(hash_type);                                            \
@@ -420,6 +423,58 @@ static inline uint32_t jenkins_one_at_a_time_hash(char *key, size_t len){
 	hash ^= (hash >> 11);
 	hash += (hash << 15);
 	return hash;
+}
+
+static inline uint64_t hash64shift(uint64_t key){
+	key = (~key) + (key << 21); // key = (key << 21) - key - 1;
+	key = key ^ (key >> 24);
+	key = (key + (key << 3)) + (key << 8); // key * 265
+	key = key ^ (key >> 14);
+	key = (key + (key << 2)) + (key << 4); // key * 21
+	key = key ^ (key >> 28);
+	key = key + (key << 31);
+	return key;
+}
+
+
+static inline uint64_t MurmurHash64A(const void * key, int len, uint32_t seed){
+	const uint64_t m = 0xc6a4a7935bd1e995LLU;
+	const int r = 47;
+
+	uint64_t h = seed ^ (len * m);
+
+	const uint64_t * data = (const uint64_t *)key;
+	const uint64_t * end = data + (len/8);
+
+	while(data != end){
+		uint64_t k = *data++;
+
+		k *= m;
+		k ^= k >> r;
+		k *= m;
+
+		h ^= k;
+		h *= m;
+	}
+
+	const unsigned char * data2 = (const unsigned char*)data;
+
+	switch(len & 7){
+	case 7: h ^= ((uint64_t)data2[6]) << 48;
+	case 6: h ^= ((uint64_t)data2[5]) << 40;
+	case 5: h ^= ((uint64_t)data2[4]) << 32;
+	case 4: h ^= ((uint64_t)data2[3]) << 24;
+	case 3: h ^= ((uint64_t)data2[2]) << 16;
+	case 2: h ^= ((uint64_t)data2[1]) << 8;
+	case 1: h ^= ((uint64_t)data2[0]);
+	        h *= m;
+	};
+
+	h ^= h >> r;
+	h *= m;
+	h ^= h >> r;
+
+	return h;
 }
 
 #define u32hashcode(key) __lh3_Jenkins_hash_int(key)
