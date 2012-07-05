@@ -136,6 +136,50 @@ void print_asm(merge_t *merger, FILE *out) {
 	}
 }
 
+void print_asm2(merge_t *merger, FILE *out) {
+	uint32_t i, j, k;
+	contig_t *ctg, *ctg2;
+	read_t *rd;
+
+	for (k = 0; k < merger->ctgs->size; k++) {
+		ctg = get_contigv(merger->ctgs, k);
+		if (merger->flag && !ctg->closed && ctg->rds->size >= merger->min_read && ctg->rds->size <= merger->max_read) {  // have used ef
+			for (i = 1; i < ctg->rds->size; i++) {
+				rd = ref_readv(ctg->rds, i);
+				fprintf(out, "%u\t%u\n", merger->cid, rd->seq_id);
+				fflush(out);
+			} 
+			for (j = 1; j < ctg->m_rds->size; j++) {
+				ctg2 = get_contigv(merger->ctgs, get_u32list(ctg->m_rds, j));
+				for (i = 0; i < ctg2->rds->size; i++) {
+					rd = ref_readv(ctg2->rds, i);
+					fprintf(out, "%u\t%u\n", merger->cid, rd->seq_id);
+					fflush(out);
+				}
+			}
+			merger->cid++;
+		}
+		if (!merger->flag && !ctg->closed && ctg->rds->size >= merger->min_read && ctg->rds->size <= merger->max_read) {
+			merger->flag = 1;
+			rd = ref_readv(ctg->rds, 0);
+			for (i = 1; i < ctg->rds->size; i++) {
+				rd = ref_readv(ctg->rds, i);
+				fprintf(out, "%u\t%u\n", merger->cid, rd->seq_id);
+				fflush(out);
+			}
+			for (j = 1; j < ctg->m_rds->size; j++) {
+				ctg2 = get_contigv(merger->ctgs, get_u32list(ctg->m_rds, j));
+				for (i = 0; i < ctg2->rds->size; i++) {
+					rd = ref_readv(ctg2->rds, i);
+					fprintf(out, "%u\t%u\n", merger->cid, rd->seq_id);
+					fflush(out);
+				}
+			}
+			merger->cid++;
+		}
+	}
+}
+
 void index_rds(merge_t *merger, contig_t *ctg) {
 	uint64_t kmask = 0xFFFFFFFFFFFFFFFFLLU >> ((32-merger->RD_KMER_SIZE)*2), pos;
 	read_t *rd; uint32_t i, j, len; int exists;
@@ -309,7 +353,7 @@ int is_similar_enough(merge_t *merger, contig_t *c1, contig_t *c2) {
 		}
 	}
 //	fprintf(stderr, "cnt=%d n=%d div=%f, n1=%d, n2=%d\n", cnt, n, (float)cnt/n, n1, n2);
-	if ((float)cnt/n - 0.80 >= 0)
+	if ((float)cnt/n - merger->het >= 0)
 		return 1;
 
 	return 0;
@@ -409,7 +453,7 @@ void free_tree(merge_t *merger) {
 	return;
 }
 
-merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_t kmersize) {
+merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_t kmersize, uint32_t max_cluster, uint32_t need_asm) {
 	merge_t *merger;
 	uint32_t skmer;
 	merger = (merge_t *)malloc(sizeof(merge_t));
@@ -420,14 +464,17 @@ merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_
 	merger->min_kmer = min_kmer;
 	merger->min_overlap = min_overlap;
 	merger->het = het;
-	merger->RD_KMER_SIZE = 23;
+	merger->RD_KMER_SIZE = kmersize;
 	merger->min_ol = 5;              
 	merger->min_sm = 0.90;
 	merger->min_read = 5;
 	merger->max_read = 300;
+	merger->need_asm = need_asm;
+	merger->max_cluster = max_cluster;
 	merger->sim_pairs = 0;
 	merger->ef = NULL;
 	merger->flag = 0;
+	merger->cid = 0;
 	skmer = kmersize;
 	return merger;
 }
@@ -540,16 +587,28 @@ void merge_ctgs(merge_t *merger, FileReader *in, FILE *out) {
 			if (lastcid) { 
 				build_tree(merger);
 				update_ctg2merge(merger);
-				do {
-					merger->sim_pairs = 0;
+				if (merger->ctgs->size <= merger->max_cluster) {
+					do {
+						merger->sim_pairs = 0;
+						merge_along_tree(merger, merger->tree); 
+					} while (merger->sim_pairs);
+					if (merger->ctgs->size>=3){ 
+	//				if (merger->ctgs->size>=4 && merger->ctgs->size<=200){ 
+	//					index_ctgs(merger);
+						merge_core(merger);
+					}
+					if (merger->need_asm)
+						print_asm(merger, out);
+					else
+						print_asm2(merger, out);
+
+				} else {
 					merge_along_tree(merger, merger->tree); 
-				} while (merger->sim_pairs);
-				if (merger->ctgs->size>=3){ 
-//				if (merger->ctgs->size>=4 && merger->ctgs->size<=200){ 
-//					index_ctgs(merger);
-					merge_core(merger);
+					if (merger->need_asm)
+						print_asm(merger, out);
+					else
+						print_asm2(merger, out);
 				}
-				print_asm(merger, out);
 				free_tree(merger);
 //				free_ctgs(merger);
 				reset_merger(merger);
@@ -564,16 +623,27 @@ void merge_ctgs(merge_t *merger, FileReader *in, FILE *out) {
 	if (lastcid) {
 		build_tree(merger);
 		update_ctg2merge(merger);
-		do {
-			merger->sim_pairs = 0;
-			merge_along_tree(merger, merger->tree);
-		} while (merger->sim_pairs);
-		if (merger->ctgs->size>=3){ 
-//		if (merger->ctgs->size>=4 && merger->ctgs->size<=200){ 
-//			index_ctgs(merger);
-			merge_core(merger);
+		if (merger->ctgs->size <= merger->max_cluster) {
+			do {
+				merger->sim_pairs = 0;
+				merge_along_tree(merger, merger->tree);
+			} while (merger->sim_pairs);
+			if (merger->ctgs->size>=3){ 
+	//		if (merger->ctgs->size>=4 && merger->ctgs->size<=200){ 
+	//			index_ctgs(merger);
+				merge_core(merger);
+			}
+			if (merger->need_asm)
+				print_asm(merger, out);
+			else
+				print_asm2(merger, out);
+		} else {
+			merge_along_tree(merger, merger->tree); 
+			if (merger->need_asm)
+				print_asm(merger, out);
+			else
+				print_asm2(merger, out);
 		}
-		print_asm(merger, out);
 		free_tree(merger);
 //		free_ctgs(merger);
 		reset_merger(merger);

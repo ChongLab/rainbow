@@ -265,7 +265,8 @@ void asm_ef_ctgs(EF *ef){
 					ctg1->len = offset + ctg2->len;
 				}
 			} else {
-				continue;
+				// ABCDEG
+				//continue;
 				ctg1->closed = 1;
 				offset = off2 - off1;
 				for(j=0;j<vec_size(ctg1->rids);j++){

@@ -102,20 +102,20 @@ uint32_t linking_core(Cluster *cluster, uint32_t seqid, uint64_t *seq, uint32_t 
 	uint32_t j, off, c;
 	uint32_t link;
 	int exists;
-	if(seqlen < (cluster->idxs[1] + 1) * KMER_SIZE) return seqid;
+	if(seqlen < (cluster->idxs[1] + 1) * cluster->KMER_SIZE) return seqid;
 	K.kmer1 = 0;
 	K.kmer2 = 0;
 	K.seqid = seqid;
 	{
-		off = cluster->idxs[0] * KMER_SIZE;
-		for(j=0;j<KMER_SIZE;j++){
+		off = cluster->idxs[0] * cluster->KMER_SIZE;
+		for(j=0;j<cluster->KMER_SIZE;j++){
 			c = bits2bit(seq, off + j);
 			K.kmer1 = (K.kmer1 << 2) | c;
 		}
 	}
 	{
-		off = cluster->idxs[1] * KMER_SIZE;
-		for(j=0;j<KMER_SIZE;j++){
+		off = cluster->idxs[1] * cluster->KMER_SIZE;
+		for(j=0;j<cluster->KMER_SIZE;j++){
 			c = bits2bit(seq, off + j);
 			K.kmer2 = (K.kmer2 << 2) | c;
 		}
@@ -271,10 +271,10 @@ void indexing_cluster(Cluster *cluster, FileReader *fr, int is_fq, int fix_rd_le
 	max_rd_len = cluster->sdb->max_rd_len;
 	t1 = clock();
 	fprintf(stderr, "\r %u reads, %.2f secs [OK]\n", cluster->sdb->n_rd, ((double)t1 - t0) / CLOCKS_PER_SEC); fflush(stderr);
-	for(cluster->idxs[0]=0;cluster->idxs[0]<KMER_NUM;cluster->idxs[0]++){
-		for(cluster->idxs[1]=cluster->idxs[0]+1;cluster->idxs[1]<KMER_NUM;cluster->idxs[1]++){
-			fprintf(stderr, "Iterating %u/%u %u/%u\n", cluster->idxs[0], KMER_NUM, cluster->idxs[1], KMER_NUM); fflush(stderr);
-			if(max_rd_len && (cluster->idxs[1] + 1) * KMER_SIZE > max_rd_len){
+	for(cluster->idxs[0]=0;cluster->idxs[0]<cluster->KMER_NUM;cluster->idxs[0]++){
+		for(cluster->idxs[1]=cluster->idxs[0]+1;cluster->idxs[1]<cluster->KMER_NUM;cluster->idxs[1]++){
+			fprintf(stderr, "Iterating %u/%u %u/%u\n", cluster->idxs[0], cluster->KMER_NUM, cluster->idxs[1], cluster->KMER_NUM); fflush(stderr);
+			if(max_rd_len && (cluster->idxs[1] + 1) * cluster->KMER_SIZE > max_rd_len){
 				fprintf(stderr, "- Skip\n"); fflush(stderr);
 				continue;
 			}
@@ -384,7 +384,7 @@ void clustering(Cluster *cluster, FileReader *fr2, int is_fq2, int fix_rd_len, F
 	free_u32list(rids);
 }
 
-Cluster* init_cluster(uint32_t max_mm, uint32_t exact_limit){
+Cluster* init_cluster(uint32_t max_mm, uint32_t exact_limit, uint32_t KMER_SIZE, uint32_t KMER_NUM){
 	Cluster *cluster;
 	cluster = malloc(sizeof(Cluster));
 	cluster->sdb  = NULL;
@@ -397,6 +397,8 @@ Cluster* init_cluster(uint32_t max_mm, uint32_t exact_limit){
 	cluster->idxs[0] = 0;
 	cluster->idxs[1] = 0;
 	cluster->index = NULL;
+	cluster->KMER_SIZE = KMER_SIZE;
+	cluster->KMER_NUM = KMER_NUM;
 	cluster->flags = init_bitvec(1024);
 	cluster->links = init_u32list(1024);
 	cluster->bts   = init_u32list(64);

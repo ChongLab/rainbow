@@ -100,6 +100,9 @@ typedef struct {
 	uint32_t min_read; // parameter for asm
 	uint32_t max_read; // parameter for asm
 	uint32_t sim_pairs;
+	uint32_t max_cluster; //parameter
+	uint32_t need_asm; // parameter
+	uint32_t cid; //
 	EF *ef;
 	int flag;  // if == 0 first use, init; else reset
 } merge_t;
@@ -109,7 +112,7 @@ typedef struct {
 extern "C" {
 #endif
 
-merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_t kmersize);
+merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_t kmersize, uint32_t max_cluster, uint32_t need_asm);
 //void merge_ctgs(merge_t *merger, FileReader *asmd, FileReader *divd, FILE *out);
 void merge_ctgs(merge_t *merger, FileReader *in, FILE *out);
 void merge_along_tree(merge_t *merger, pathtree_t *tree);

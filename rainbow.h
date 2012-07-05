@@ -34,8 +34,9 @@
 #include "mergectg.h"
 
 
-#define KMER_SIZE	13
-#define KMER_NUM	7
+//static uint32_t KMER_SIZE = 15;
+//static uint32_t KMER_NUM = 6;
+//#define KMER_NUM	6
 
 typedef struct {
 	uint32_t kmer1, kmer2, seqid;
@@ -70,6 +71,8 @@ typedef struct {
 	uint32_t max_mm;
 	uint32_t exact_limit;
 	uint32_t idxs[2];
+	uint32_t KMER_SIZE;
+	uint32_t KMER_NUM;
 	khash *index;
 	u32list *links;
 	BitVec  *flags;
@@ -80,7 +83,7 @@ typedef struct {
 	sbtv    *sbts;
 } Cluster;
 
-Cluster* init_cluster(uint32_t max_mm, uint32_t exact_limit);
+Cluster* init_cluster(uint32_t max_mm, uint32_t exact_limit, uint32_t KMER_SIZE, uint32_t KMER_NUM);
 void indexing_cluster(Cluster *cluster, FileReader *fr1, int is_fq, int fix_rd_len);
 void clustering(Cluster *cluster, FileReader *fr2, int is_fq, int fix_rd_len, FILE *out);
 void free_cluster(Cluster *cluster);

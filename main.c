@@ -33,8 +33,9 @@ int usage(){
 	"  -2 <string> Input fasta/fastq file, supports multiple '-2' [null]\n"
 	"  -l <int>    Read length, default: 0 variable\n"
 	//"  -r <int>    rank of input files [1]\n"
-	"  -m <int>    Maximum mismatches [5]\n"
+	"  -m <int>    Maximum mismatches [4]\n"
 	"  -e <int>    Exactly matching threshold [2000]\n"
+	"  -L          Low level of polymorphism\n"
 	" div\n"
 	"  -i <string> Input file [stdin]\n"
 	"  -o <string> Output file [stdout]\n"
@@ -43,13 +44,14 @@ int usage(){
 	"  -f <float>  Frequency, min variant frequency to create a new group [0.2]\n"
 	" merge \n"
 	"  -i <string> Input rbasm output file [stdin]\n"
+	"  -a          output assembly or not [not]\n"
 //	"  -v <string> Input rainbow divided file [stdin]\n"
 //	"  -p <float>  maximum heterozygosity to collapse, should be specifed according to the estimated\n"
 //	"              polymorphism of the species [0.02]\n"
 //	"  -l <int>    Minimum overlap to collapse two contigs [100]\n"
 //	"  -k <int>    Minimum number of kmers to define similarity between two contigs [5]\n"
 	"  -o <string> Output file for merged contigs, one line per cluster [stdout]\n" 
-//	"  -n <int>    Maximum number of contigs to execute pairwise alignment [50]\n"
+	"  -N <int>    Maximum number of divided clusters to merge [300]\n"
 	"\n",
 	version
 	);
@@ -64,16 +66,18 @@ int cluster_invoker(int argc, char **argv){
 	namelist *list1, *list2;
 	char *infile;
 	int max_mm, c, exact_limit, is_fq1, is_fq2, fix_rd_len;
+	uint32_t KMER_SIZE = 15, KMER_NUM = 6;
 	int rank = 1;
 	fr2 = NULL;
 	infile = NULL;
-	max_mm = 5;
+	max_mm = 4;
 	exact_limit = 2000;
 	fix_rd_len = 0;
 	list1 = init_namelist(2);
 	list2 = init_namelist(2);
 
-	while((c = getopt(argc, argv, "h1:2:r:m:e:l:")) != -1){
+
+	while((c = getopt(argc, argv, "h1:2:r:m:e:l:L")) != -1){
 		switch(c){
 			case 'h': return usage();
 			case '1': push_namelist(list1, optarg); break;
@@ -82,6 +86,7 @@ int cluster_invoker(int argc, char **argv){
 			case 'l': fix_rd_len = atoi(optarg); break;
 			case 'm': max_mm = atoi(optarg); break;
 			case 'e': exact_limit = atoi(optarg); break;
+			case 'L': KMER_SIZE = 13; KMER_NUM = 4; break;
 			default: return usage();
 		}
 	}
@@ -120,7 +125,7 @@ int cluster_invoker(int argc, char **argv){
 	free_namelist(list1);
 	free_namelist(list2);
 	
-	cluster = init_cluster(max_mm, exact_limit);
+	cluster = init_cluster(max_mm, exact_limit, KMER_SIZE, KMER_NUM);
 	indexing_cluster(cluster, fr1, is_fq1, fix_rd_len);
 	clustering(cluster, fr2, is_fq2, fix_rd_len, stdout);
 	free_cluster(cluster);
@@ -179,10 +184,12 @@ int merge_invoker(int argc, char **argv) {
 	char *divdf = NULL, *outfile = NULL;
 	uint32_t min_kmer = 5;
 	uint32_t min_overlap = 100;
-	float het = 0.02; int c;
-	uint32_t kmersize = 15;
+	float het = 0.85; int c;
+	uint32_t kmersize = 23;
+	uint32_t max_cluster = 300;
+	uint32_t need_asm = 0;
 
-	while ((c = getopt(argc, argv, "hi:l:p:k:o:s:")) != -1) {
+	while ((c = getopt(argc, argv, "hi:l:p:k:o:s:N:a")) != -1) {
 		switch (c) {
 			case 'h': return usage();
 	//		case 'a': asmdf = optarg; break;
@@ -192,6 +199,8 @@ int merge_invoker(int argc, char **argv) {
 			case 'k': min_kmer = atoi(optarg); break;
 			case 'o': outfile = optarg; break;
 			case 's': kmersize = atoi(optarg); break;
+			case 'N': max_cluster = atoi(optarg); break;
+			case 'a': need_asm = 1; break;
 			default: return usage();
 		}
 	}
@@ -208,7 +217,7 @@ int merge_invoker(int argc, char **argv) {
 		}
 	} else out = stdout;
 	merge_t *merger;
-	merger = init_merger(min_kmer, min_overlap, het, kmersize);
+	merger = init_merger(min_kmer, min_overlap, het, kmersize, max_cluster, need_asm);
 	merge_ctgs(merger, divd, out);
 	free_merger(merger);
 	fclose_filereader(divd);
