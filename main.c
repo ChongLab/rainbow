@@ -19,16 +19,16 @@
  
 #include "rainbow.h"
 
-const char *version = "1.1";
+const char *version = "2.0.1";
 
 int usage(){
 	printf(
 	"rainbow %s -- <ruanjue@gmail.com, chongzechen@gmail.com>\n"
 	"Usage: rainbow <cmd> [options]\n"
-	"Input  File Format: paired fasta/fastq file(s)\n"
-	"Output File Format: <seqid:int>\\t<cluster_id:int>\\t<read1:string>\\t<read2:string>[\\t<pre_cluster_id:int>]\n"
 	"\n"
 	" cluster\n"
+	"Input  File Format: paired fasta/fastq file(s)\n"
+	"Output File Format: <seqid:int>\\t<cluster_id:int>\\t<read1:string>\\t<read2:string>\n"
 	"  -1 <string> Input fasta/fastq file, supports multiple '-1'\n"
 	"  -2 <string> Input fasta/fastq file, supports multiple '-2' [null]\n"
 	"  -l <int>    Read length, default: 0 variable\n"
@@ -37,14 +37,17 @@ int usage(){
 	"  -e <int>    Exactly matching threshold [2000]\n"
 	"  -L          Low level of polymorphism\n"
 	" div\n"
+	"Input File Format: <seqid:int>\\t<cluster_id:int>\\t<read1:string>\\t<read2:string>\n"
+	"Output File Format: <seqid:int>\\t<cluster_id:int>\\t<read1:string>\\t<read2:string>[\\t<pre_cluster_id:int>]\n"
 	"  -i <string> Input file [stdin]\n"
 	"  -o <string> Output file [stdout]\n"
 	"  -k <int>    K_allele, min variants to create a new group [2]\n"
 	"  -K <int>    K_allele, divide regardless of frequency when num of variants exceed this value [50]\n"
 	"  -f <float>  Frequency, min variant frequency to create a new group [0.2]\n"
 	" merge \n"
+	"Input File Format: <seqid:int>\\t<cluster_id:int>\\t<read1:string>\\t<read2:string>[\\t<pre_cluster_id:int>]\n"
 	"  -i <string> Input rbasm output file [stdin]\n"
-	"  -a          output assembly or not [not]\n"
+	"  -a          output assembly\n"
 //	"  -v <string> Input rainbow divided file [stdin]\n"
 //	"  -p <float>  maximum heterozygosity to collapse, should be specifed according to the estimated\n"
 //	"              polymorphism of the species [0.02]\n"
@@ -64,12 +67,10 @@ int cluster_invoker(int argc, char **argv){
 	Cluster *cluster;
 	FileReader *fr1, *fr2;
 	namelist *list1, *list2;
-	char *infile;
 	int max_mm, c, exact_limit, is_fq1, is_fq2, fix_rd_len;
 	uint32_t KMER_SIZE = 15, KMER_NUM = 6;
-	int rank = 1;
+//	int rank = 1;
 	fr2 = NULL;
-	infile = NULL;
 	max_mm = 4;
 	exact_limit = 2000;
 	fix_rd_len = 0;
@@ -77,12 +78,12 @@ int cluster_invoker(int argc, char **argv){
 	list2 = init_namelist(2);
 
 
-	while((c = getopt(argc, argv, "h1:2:r:m:e:l:L")) != -1){
+	while((c = getopt(argc, argv, "h1:2:m:e:l:L")) != -1){
 		switch(c){
 			case 'h': return usage();
 			case '1': push_namelist(list1, optarg); break;
 			case '2': push_namelist(list2, optarg); break;
-			case 'r': rank = atoi(optarg); break;
+//			case 'r': rank = atoi(optarg); break;
 			case 'l': fix_rd_len = atoi(optarg); break;
 			case 'm': max_mm = atoi(optarg); break;
 			case 'e': exact_limit = atoi(optarg); break;

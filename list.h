@@ -61,14 +61,12 @@ static inline size_type count_##list_type(list_type *list){ return list->size; }
 static inline void clear_##list_type(list_type *list){ list->size = 0; }	\
 	\
 static inline void encap_##list_type(list_type *list, size_type n){	\
-	size_type next_size;	\
 	if(list->size + n <= list->cap) return;	\
 	if(list->size + n < list->size){	\
 		fprintf(stderr, " -- elements size exceed %s's data type %s in %s -- %s:%d --\n", #list_type, #size_type, __FUNCTION__, __FILE__, __LINE__);	\
 		fflush(stderr);	\
 		abort();	\
 	}	\
-	next_size = list->cap;	\
 	while(list->size + n > list->cap){	\
 		if(list->cap < inc_size){	\
 			list->cap <<= 1;	\

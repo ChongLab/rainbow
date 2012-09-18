@@ -217,7 +217,7 @@ void update_ctg2merge(merge_t *merger) {
 		push_idxv(ctg->m_idx, ctg->index);
 	}
 }
-
+/*
 static void print_leaf(merge_t *merger, pathtree_t *tree, FILE *out) {
 	contig_t *ctg;
 	if (tree->tid) {
@@ -244,6 +244,7 @@ static void show(pathtree_t *tree, int h) {
 	printnode(tree->tid, h);
 	show(tree->left, h+1);
 }
+*/
 
 void merge_leaves(merge_t *merger, uint32_t id1, uint32_t id2) {
 	char *prefix;
@@ -455,7 +456,7 @@ void free_tree(merge_t *merger) {
 
 merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_t kmersize, uint32_t max_cluster, uint32_t need_asm) {
 	merge_t *merger;
-	uint32_t skmer;
+//	uint32_t skmer;
 	merger = (merge_t *)malloc(sizeof(merge_t));
 	merger->ctgs = init_contigv(2);
 	merger->cache = init_contigsv(2);
@@ -475,7 +476,7 @@ merge_t* init_merger(uint32_t min_kmer, uint32_t min_overlap, float het, uint32_
 	merger->ef = NULL;
 	merger->flag = 0;
 	merger->cid = 0;
-	skmer = kmersize;
+//	skmer = kmersize;
 	return merger;
 }
 

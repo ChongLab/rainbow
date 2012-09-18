@@ -3,7 +3,7 @@
 int main(int argc, char **argv){
 	FileReader *in;
 	FILE *out;
-	uint32_t n_ef, min_ol, min_read, max_read;
+	uint32_t min_ol, min_read, max_read;
 	float min_sm;
 	char *infile, *outfile;
 	int c;
@@ -34,7 +34,7 @@ int main(int argc, char **argv){
 		fprintf(stderr, " -- Cannot write %s in %s -- %s:%d --\n", outfile, __FUNCTION__, __FILE__, __LINE__);
 		abort();
 	}
-	n_ef = asm_ef(in, out, min_ol, min_sm, min_read, max_read);
+	asm_ef(in, out, min_ol, min_sm, min_read, max_read);
 	fclose_filereader(in);
 	if(outfile) fclose(out);
 	return 0;

@@ -78,7 +78,7 @@ uint32_t _call_key_col(Div *div, uint32_t gid){
 uint32_t call_key_col(Div *div, uint32_t gid){
 	ReadInfo *rd;
 	u32list *grp;
-	uint32_t i, j, k, col, row, key, c, max_non, tol, base, s1, s2;
+	uint32_t i, j, k, col, row, key, c, tol, base, s1, s2;
 	BaseCnt cnts[4];
 	col_base_t *cb;
 	uint64_t MM1, MM2;
@@ -87,7 +87,6 @@ uint32_t call_key_col(Div *div, uint32_t gid){
 	key = div->n_col;
 	base = 0;
 	grp = get_u32slist(div->grps, gid);
-	max_non = 0;
 	clear_cbv(div->cbs);
 	for(col=0;col<div->n_col;col++){
 		for(i=0;i<4;i++){ cnts[i].base = i; cnts[i].cnt = 0; }
