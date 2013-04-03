@@ -19,7 +19,7 @@
  
 #include "rainbow.h"
 
-const char *version = "2.0.1";
+const char *version = "2.0.2";
 
 int usage(){
 	printf(
