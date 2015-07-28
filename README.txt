@@ -1,4 +1,4 @@
-Rainbow v2.0.2
+Rainbow v2.0.4
 
 Description
 ===========
@@ -40,11 +40,20 @@ R readIDs
 .
 .
 
-We have also provided three simple perl scripts that can be used to extract the assembly
-information: select_all_rbcontig.pl, select_best_rbcontig.pl, select_sec_rbcontig.pl
+We have also provided four simple perl scripts that can be used to extract the assembly
+information: select_all_rbcontig.pl, select_best_rbcontig.pl, select_sec_rbcontig.pl, select_best_rbcontig_plus_read1.pl
+
+select_all_rbcontig.pl extracts all the assembled contigs, i.g., all the
+records
+
+select_best_rbcontig.pl and select_sec_rbcontig.pl extract the longest and
+the longest plus the second longest contigs for the final clusters,
+respectively
+
+select_best_rbcontig_plus_read1.pl, as select_best_rbcontig.pl, it  extracts the longest contig for each cluster. Besides, it also outputs the read1. If read1 overlaps with the contig, it joins the two as a whole. If read1 does not overlap with the contig, it pads 10 'X' to join the read1 and the contig, thus generating a long contig. 
 
 ----------------------------------------------------------------------------------
-rainbow 2.0.1 -- <ruanjue@gmail.com, chongzechen@gmail.com>
+rainbow 2.0.3 -- <ruanjue@gmail.com, chongzechen@gmail.com>
 Usage: rainbow <cmd> [options]
 
  cluster
@@ -106,5 +115,5 @@ Change log:
 ===========
 v2.0.1: README and usage infomation updated
 v2.0.2: 'merge' options are riched. The 'merge' assembly work can be customized like rbasm now. Thanks Ross Whetten in NCSU for advicing this.
-
-
+v2.0.3: changed the name of script 'select_best_rbcontig2.pl' to 'select_best_rbcontig_plus_read1.pl', and documented it. 
+v2.0.4: fixed a bug that rainbow cannot be compiled in Mac OS

@@ -154,7 +154,7 @@ void tracing_core(Cluster *cluster, uint32_t bt){
 	}
 }
 
-inline int cmp_sbt(const void *e1, const void *e2){
+static inline int cmp_sbt(const void *e1, const void *e2){
 	SBT *t1, *t2;
 	uint32_t i, len;
 	t1 = (SBT*)e1;
