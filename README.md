@@ -95,7 +95,7 @@ rbasm: a greedy assembler to locally assemble each cluster produced by rainbow o
 tools. This has been integrated into the merge module. Please always open '-a' option when running
 'rainbow merge'.
 Local assemble fragments around restriction sites
-NOTE: the input file format should be: <seqid:int>\t<cluster_id:int>\t<read1:string>\t<read2:string>[\t<pre_cluster_id:int>]
+***NOTE***: the input file format should be: <seqid:int>\t<cluster_id:int>\t<read1:string>\t<read2:string>[\t<pre_cluster_id:int>]
 ```
 Usage: rbasm [options]
  -i <string> Input file [STDIN] 
@@ -107,7 +107,7 @@ Usage: rbasm [options]
 ```
 
 ## Change log:
-v2.0.1: README and usage infomation updated
-v2.0.2: 'merge' options are riched. The 'merge' assembly work can be customized like rbasm now. Thanks Ross Whetten in NCSU for advicing this.
-v2.0.3: changed the name of script 'select_best_rbcontig2.pl' to 'select_best_rbcontig_plus_read1.pl', and documented it. 
-v2.0.4: fixed a bug that rainbow cannot be compiled in Mac OS
+* v2.0.1: README and usage infomation updated
+* v2.0.2: 'merge' options are riched. The 'merge' assembly work can be customized like rbasm now. Thanks Ross Whetten in NCSU for advicing this.
+* v2.0.3: changed the name of script 'select_best_rbcontig2.pl' to 'select_best_rbcontig_plus_read1.pl', and documented it. 
+* v2.0.4: fixed a bug that rainbow cannot be compiled in Mac OS
