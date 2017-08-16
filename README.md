@@ -1,7 +1,11 @@
 ### Rainbow v2.0.4
 
 Author: Zechen Chong & Jue Ruan
+
 Email: chongzechen@gmail.com or ruanjue@gmail.com
+
+## Citation
+> Chong, Zechen, Jue Ruan, and Chung-I. Wu. "Rainbow: an integrated tool for efficient clustering and assembling RAD-seq reads." Bioinformatics 28.21 (2012): 2732-2737. [PMID: 22942077](https://academic.oup.com/bioinformatics/article/28/21/2732/233132/Rainbow-an-integrated-tool-for-efficient)
 
 
 ## Description
